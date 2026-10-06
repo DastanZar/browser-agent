@@ -30,6 +30,7 @@ import socket
 import core
 import digest
 import notion_sync
+import turbo
 
 HOST = os.environ.get("DASHBOARD_HOST", "0.0.0.0")
 PORT = int(os.environ.get("DASHBOARD_PORT", "8770"))
@@ -51,7 +52,7 @@ _ids = itertools.count(int(time.time()))
 
 
 class Run:
-    def __init__(self, task, model, fallback, follow_up=False, fast=True, watch=None):
+    def __init__(self, task, model, fallback, follow_up=False, fast=True, watch=None, turbo=True, optimized=False):
         self.id, self.task, self.model, self.fallback = next(_ids), task, model, fallback
         self.follow_up, self.fast = follow_up, fast
         self.watch = watch                      # set for digest runs
@@ -60,10 +61,11 @@ class Run:
         self.started = self.ended = None
         self.prompt, self.future, self.shot = None, None, None
         self.notion_page_id = None
+        self.turbo, self.optimized = turbo, optimized
 
     def public(self, full=True):
-        d = {k: getattr(self, k) for k in ("id", "kind", "task", "model", "fallback", "follow_up", "fast", "status", "result", "ok",
-                                           "started", "ended", "notion_page_id")}
+        d = {k: getattr(self, k, None) for k in ("id", "kind", "task", "model", "fallback", "follow_up", "fast", "turbo", "optimized", "status", "result", "ok",
+                                                 "started", "ended", "notion_page_id")}
         if full:
             d.update(steps=self.steps[-200:], prompt=self.prompt, has_shot=self.shot is not None)
         return d
@@ -198,7 +200,7 @@ class Studio:
                     hint = await core.visible_tab_hint(self.browser)
                     agent = core.make_agent(run.task + ("\n\n" + hint if hint else ""), run.model,
                                             run.fallback, self.browser, self.ask, on_step=self.on_step,
-                                            flash_mode=run.fast)
+                                            flash_mode=run.fast, turbo_mode=run.turbo)
                     self.convo, self.convo_model, self.convo_fast, self.convo_turns = agent, run.model, run.fast, 0
                 if run.kind == "task":
                     self.agent = agent
@@ -387,10 +389,29 @@ async def run_task(request: Request):
         return JSONResponse({"error": "unknown model"}, status_code=400)
     if not core.api_key():
         return JSONResponse({"error": "save your b.ai API key first"}, status_code=400)
-    run = Run(task, model, fallback, follow_up=bool(body.get("follow_up")), fast=bool(body.get("fast", True)))
+    run = Run(task, model, fallback, follow_up=bool(body.get("follow_up")), fast=bool(body.get("fast", True)),
+              turbo=bool(body.get("turbo", True)), optimized=bool(body.get("optimized", False)))
     studio.runs.append(run)
     await studio.queue.put(run)
     return JSONResponse({"id": run.id})
+
+
+@guard
+async def optimize_prompt_endpoint(request: Request):
+    body = await request.json()
+    prompt = (body.get("prompt") or "").strip()
+    model = body.get("model") or "mimo-v2.6-flash"
+    if not prompt:
+        return JSONResponse({"error": "empty prompt"}, status_code=400)
+    if not core.api_key():
+        return JSONResponse({"error": "save your b.ai API key first"}, status_code=400)
+    try:
+        res = await turbo.compile_prompt(prompt, model_id=model)
+        if not res.get("ok"):
+            return JSONResponse({"error": res.get("error", "Compilation failed")}, status_code=500)
+        return JSONResponse(res)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @guard
@@ -634,6 +655,7 @@ app = Starlette(routes=[
     Route("/", page),
     Route("/api/state", state),
     Route("/api/run", run_task, methods=["POST"]),
+    Route("/api/optimize", optimize_prompt_endpoint, methods=["POST"]),
     Route("/api/answer", answer, methods=["POST"]),
     Route("/api/control", control, methods=["POST"]),
     Route("/api/browser", set_browser, methods=["POST"]),

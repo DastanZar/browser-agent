@@ -833,15 +833,24 @@ details[open] summary::before {
         <div><label for="fallback">Fallback Model</label><select id="fallback"></select></div>
       </div>
       
-      <div class="row" style="margin-top:14px">
-        <button class="primary" id="runBtn" style="width:100%">
+      <div class="row" style="margin-top:14px; display:flex; gap:8px;">
+        <button class="primary" id="runBtn" style="flex:1.7">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Dispatch Task
         </button>
+        <button type="button" id="optimizeBtn" style="flex:1.3; background:var(--panel-subtle); color:var(--brand-600); border:1px solid var(--brand-200); font-weight:600;" title="Compile conversational prompt into structured Boolean execution blueprint">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Optimize Prompt
+        </button>
       </div>
+      <div id="optNotice" style="display:none; margin-top:8px; font-size:11.5px; padding:6px 10px; background:#EEF2FF; border:1px solid var(--brand-200); border-radius:6px; color:var(--brand-700); line-height:1.4;"></div>
 
-      <!-- Follow-up & Fast Mode Bento Toggles -->
+      <!-- Follow-up, Fast Mode, & Turbo Mode Bento Toggles -->
       <div class="mode-toggles" style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--panel-subtle); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+        <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
+          <input type="checkbox" id="turbo" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
+          <span><b>Turbo Mode (Sandbox)</b>: instant URL pre-navigation &amp; tracker blocking</span>
+        </label>
         <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
           <input type="checkbox" id="followUp" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
           <span><b>Follow-up</b>: continue conversation (preserves context &amp; page)</span>
@@ -1172,7 +1181,7 @@ async function sendAnswer(pid, preset) {
 }
 
 function renderList(el, rows, empty, withCancel) {
-  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id]));
+  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id, r.turbo, r.optimized]));
   if (el.dataset.lastKey === key) return;
 
   const openIds = new Set();
@@ -1184,7 +1193,7 @@ function renderList(el, rows, empty, withCancel) {
   el.dataset.lastKey = key;
   el.innerHTML = rows.length ? rows.map((r) => `<li data-id="${r.id}" data-task="${esc(r.task)}">
     <div class="t">${esc(r.task)}</div>
-    <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
+    <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.turbo ? ' &bull; <span style="color:#0284C7;font-weight:700;font-size:11px;">⚡ TURBO</span>' : ''}${r.optimized ? ' &bull; <span style="color:#7C3AED;font-weight:700;font-size:11px;">✨ OPTIMIZED</span>' : ''}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
     ${withCancel ? ` &bull; <a href="#" data-cancel="${r.id}" style="color:var(--status-rose-text);font-weight:600;text-decoration:none">Cancel</a>` : (r.notion_page_id ? ` &bull; <span style="color:var(--brand-600);font-weight:600;font-size:11px;">Synced to Notion</span>` : ` &bull; <a href="#" data-sync="${r.id}" style="color:var(--brand-600);font-weight:600;text-decoration:none;font-size:11px;">Sync to Notion</a>`)}</div>
     ${r.result ? `<details ${openIds.has(String(r.id)) ? 'open' : ''}><summary>View Execution Summary</summary><div class="result">${esc(r.result)}</div></details>` : ""}</li>`).join("")
     : `<li class="muted" style="cursor:default;padding:16px 0;text-align:center">${empty}</li>`;
@@ -1272,6 +1281,35 @@ async function refresh() {
   renderList($("history"), S.history, "No completed executions yet.", false);
 }
 
+let isPromptOptimized = false;
+
+$("optimizeBtn").onclick = async () => {
+  $("runErr").textContent = "";
+  const task = $("task").value.trim();
+  if (!task) { $("runErr").textContent = "Type an instruction first to optimize."; return; }
+  const btn = $("optimizeBtn");
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="pulse-dot breathing" style="display:inline-block;width:7px;height:7px;background:var(--brand-600);border-radius:50%;margin-right:4px;"></span>Compiling...`;
+  try {
+    const res = await api("/api/optimize", { prompt: task, model: $("model").value });
+    if (res && res.optimized) {
+      $("task").value = res.optimized;
+      isPromptOptimized = true;
+      const optNotice = $("optNotice");
+      if (optNotice) {
+        optNotice.style.display = "block";
+        optNotice.innerHTML = `✨ <b>Prompt Compiled</b> in ${res.duration}s. Formatted with exact Boolean queries, site filters, and structured schema.`;
+      }
+    }
+  } catch (e) {
+    $("runErr").textContent = "Optimization failed: " + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+};
+
 $("runBtn").onclick = async () => {
   $("runErr").textContent = "";
   const task = $("task").value.trim();
@@ -1283,9 +1321,13 @@ $("runBtn").onclick = async () => {
       model: $("model").value,
       fallback: $("fallback").value || null,
       follow_up: $("followUp").checked,
-      fast: $("fast").checked
+      fast: $("fast").checked,
+      turbo: $("turbo").checked,
+      optimized: isPromptOptimized
     });
     $("task").value = "";
+    isPromptOptimized = false;
+    if ($("optNotice")) $("optNotice").style.display = "none";
     refresh();
   }
   catch (e) { $("runErr").textContent = e.message; }

@@ -17,18 +17,28 @@ The primary interface provides 1-click starter prompts, workflow templates, infe
 
 ![Operations Console Overview](docs/images/dashboard-overview.png)
 
-### 2. Notion Kanban Database & Live Step Streaming
+### 2. Sandboxed Turbo Mode & Fast Prompt Compiler
+Toggle **Turbo Mode (Sandbox)** to instantly bypass the 30-second `about:blank` LLM discovery turn with zero code risk. Click **⚡ Optimize Prompt** to transform loose, conversational requests into high-precision, multi-phase execution blueprints with exact Boolean queries and extraction schemas.
+
+![Turbo Mode and Prompt Compiler Controls](docs/images/turbo-sandbox-controls.png)
+
+### 3. Prompt Compiler Live Preview
+The fast compiler analyzes unstructured requests (e.g. searching LinkedIn for multi-company recruiters and firing connection requests), automatically synthesizing Boolean search strings, field extraction tables, rate-limit guardrails, and structured markdown output schemas.
+
+![Compiled Execution Plan Preview](docs/images/prompt-compiler-preview.png)
+
+### 4. Notion Kanban Database & Live Step Streaming
 Connect an existing Notion database or auto-provision a new Kanban board with 1 click. Tasks, real-time status transitions (`Queued` → `In Progress` → `Needs Human` → `Completed`), chronological CDP steps, and fetched content are automatically populated into Notion.
 
 ![Notion Kanban Integration](docs/images/notion-kanban-board.png)
 
-### 3. Personal Intelligence Digest & Watchlist
+### 5. Personal Intelligence Digest & Watchlist
 Read-only, human-paced feed scrolling with DeepSeek v4.1 Flash. The agent deduplicates posts via SHA-1 fingerprints, reads post links in background CDP tabs, and verifies extracted summaries against verbatim DOM body text.
 
 ![Personal Intelligence Digest](docs/images/social-digest.png)
 
-### 4. Execution History & Interactive Summaries
-Persistent turn history with real-time state caching, status chips (`DONE`, `FAILED`, `STOPPED`), timing metrics, and non-jittery expandable execution summaries.
+### 6. Execution History & Interactive Summaries
+Persistent turn history with real-time state caching, status chips (`DONE`, `FAILED`, `STOPPED`), `⚡ TURBO` and `✨ OPTIMIZED` execution tags, timing metrics, and non-jittery expandable execution summaries.
 
 ![Execution History and Summary](docs/images/execution-summary.png)
 
@@ -36,7 +46,19 @@ Persistent turn history with real-time state caching, status chips (`DONE`, `FAI
 
 ## Key Capabilities
 
-### ⚡ 1. High-Speed Fast Mode (`flash_mode=True`)
+### ⚡ 1. Sandboxed Turbo Mode (`turbo_mode=True`)
+- **Instant Pre-Navigation (Turn 0)**: Deterministically parses destination URLs from user instructions (`youtube.com`, `linkedin.com`, `console.cloud.google.com`) and opens them immediately in the initial tab action. Eliminates the 20–40s blank-page DOM screenshot & evaluation delay.
+- **CDP Ad & Tracker Suppression**: Uses Chrome DevTools Protocol `Network.setBlockedURLs` to silence tracking beacons (`*google-analytics.com*`, `*doubleclick.net*`, `*youtube.com/api/stats/*`, `*linkedin.com/li/track*`). Prevents streaming SPAs (YouTube, GCP) from stalling on `networkidle`.
+- **Tuned Action Timings**: Page load wait reduced to `0.1s`, network idle wait to `0.2s`, action interval to `0.1s`.
+- **Zero-Risk Sandbox Isolation**: Completely isolated behind a single UI toggle (`Turbo Mode (Sandbox)`). Unchecking it cleanly falls back to vanilla baseline behavior for side-by-side benchmarking.
+
+### ✨ 2. Fast Prompt Optimizer / Instruction Compiler
+- **Prompt Bottleneck Elimination**: Operator prompts are often underspecified or conversational. The compiler turns broad instructions into rigorous engineering blueprints in seconds.
+- **Automated Boolean Synthesis**: Converts broad phrases like *"find mid level employees of uber, microsoft, stripe and their hr and hiring managers"* into exact search expressions:
+  `"Uber" AND ("Talent Acquisition" OR "Recruiter" OR "HR Manager" OR "Hiring Manager" OR "People Operations")`
+- **Multi-Phase Architecture**: Automatically formats instructions into Phase 1 (Navigation & Auth), Phase 2 (Filtering), Phase 3 (Extraction Schema Table), Phase 4 (Action & Modal Rules), and Safety Guardrails.
+
+### ⚡ 3. High-Speed Fast Mode (`flash_mode=True`)
 - Suppresses verbose model reasoning monologues. The agent communicates concise, high-velocity tool actions directly over CDP.
 - **Empirical Execution Benchmarks**:
   - Open Wikipedia & extract featured article: **31.7s** (down from 170s+ in normal mode).

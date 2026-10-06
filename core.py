@@ -17,6 +17,7 @@ import urllib.request
 from pathlib import Path
 
 from browser_use import ActionResult, Agent, Browser, BrowserSession, ChatOpenAI, Tools
+import turbo
 
 HERE = Path(__file__).resolve().parent
 CONFIG = json.loads((HERE / "models.json").read_text())
@@ -570,11 +571,19 @@ def build_tools(human, gate=None, capture=None, collector=None):
 
 
 def make_agent(task, model_id, fallback_id, browser, human, on_step=None, vision=None, read_only=False, capture=None,
-               collector=None,
+               collector=None, turbo_mode=False,
                **agent_kwargs):
     gate = Gate(human, read_only=read_only)
 
     async def step_hook(state, output, n):
+        if turbo_mode and n == 1:
+            try:
+                curr_target = browser.session_manager.get_current_target()
+                if curr_target:
+                    session = await browser.session_manager.get_or_create_session(curr_target.target_id)
+                    await turbo.enable_cdp_ad_blocking(session)
+            except Exception:
+                pass
         if on_step:
             result = on_step(state, output, n)
             if asyncio.iscoroutine(result):
@@ -584,14 +593,25 @@ def make_agent(task, model_id, fallback_id, browser, human, on_step=None, vision
     secrets = {k[7:]: v for k, v in os.environ.items() if k.startswith("SECRET_") and v}
     if vision is None:
         vision = MODELS[model_id]["vision"] and os.environ.get("LLM_VISION", "1") == "1"
+
+    # Sandboxed Turbo Accelerator: Deterministic instant navigation on Step 0
+    initial_actions = None
+    if turbo_mode:
+        dest_url = turbo.extract_target_url(task)
+        if dest_url:
+            initial_actions = [{"navigate": {"url": dest_url, "new_tab": True}}]
+
+    # Fallback to standard about:blank behavior if turbo is disabled or no URL found
+    if not initial_actions:
+        initial_actions = [{"navigate": {"url": "about:blank", "new_tab": True}}]
+
     return Agent(
         task=task.strip(), llm=make_llm(model_id),
         fallback_llm=make_llm(fallback_id) if fallback_id and fallback_id != model_id else None,
         browser=browser, tools=build_tools(human, gate, capture, collector), extend_system_message=POLICY,
         sensitive_data=secrets or None, use_vision=vision,
         register_new_step_callback=step_hook,
-        # Start in a fresh tab so the human's tabs are never navigated by accident.
-        initial_actions=[{"navigate": {"url": "about:blank", "new_tab": True}}],
+        initial_actions=initial_actions,
         max_failures=4, step_timeout=6 * 3600,  # a step may wait on the human for a long time
         llm_timeout=150,  # the default 75 s was too short for flash models on long pages
         use_judge=False,  # extra LLM pass that grades the run; it added minutes and failed in tests
