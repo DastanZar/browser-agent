@@ -1,0 +1,35 @@
+# Virtual Environments & Dependencies
+.venv/
+venv/
+node_modules/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Runtime execution artifacts & logs
+runs/
+failures/
+*.log
+dash_*.txt
+ps_*.txt
+.playwright-mcp/
+
+# Local credentials & secrets
+.env
+*.key
+~/.config/bai/
+~/.agent-chrome/
+watches.json
+seen.json
+digests.jsonl
+settings.json
+
+# Portable archives
+browser-automation-suite-portable.zip
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+

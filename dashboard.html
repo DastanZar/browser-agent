@@ -1,0 +1,1310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browser Automation Suite &bull; Operations Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   UI-UX-PRO-MAX DESIGN SYSTEM: Modern Bento-Box SaaS Developer Console
+   Archetype: Modern Minimalist + Bento Grid + Swiss Precision
+   Zero Ugly Scrollbars | Pixel-Perfect Aligned Controls | 14:1+ Contrast
+   ========================================================================== */
+
+:root {
+  --brand-50:  #EFF6FF;
+  --brand-100: #DBEAFE;
+  --brand-500: #3B82F6;
+  --brand-600: #2563EB;
+  --brand-700: #1D4ED8;
+  --brand-900: #1E3A8A;
+  --brand-glow: rgba(37, 99, 235, 0.16);
+
+  --canvas-bg: #F8FAFC;
+  --panel-bg: #FFFFFF;
+  --panel-subtle: #F1F5F9;
+
+  --text-main: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-subtle: #94A3B8;
+
+  --border-subtle: #E2E8F0;
+  --border-medium: #CBD5E1;
+  --border-strong: #94A3B8;
+
+  --status-emerald-bg: #ECFDF5;
+  --status-emerald-text: #047857;
+  --status-emerald-border: #A7F3D0;
+  
+  --status-amber-bg: #FFFBEB;
+  --status-amber-text: #B45309;
+  --status-amber-border: #FDE68A;
+  
+  --status-rose-bg: #FFF1F2;
+  --status-rose-text: #BE123C;
+  --status-rose-border: #FECDD3;
+
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+  --shadow-hover: 0 12px 24px -4px rgba(15, 23, 42, 0.06), 0 4px 6px -2px rgba(15, 23, 42, 0.02);
+
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.24s;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}
+
+/* Modern Sleek Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+body {
+  margin: 0;
+  background-color: var(--canvas-bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header */
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 32px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.brand-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--brand-600) 0%, #4338CA 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px var(--brand-glow);
+  flex-shrink: 0;
+}
+
+.brand-info h1 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+
+.brand-info p {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin: 0;
+}
+
+.spacer { flex: 1; }
+
+.header-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.telemetry-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+}
+
+.telemetry-chip.on {
+  background: var(--status-emerald-bg);
+  color: var(--status-emerald-text);
+  border-color: var(--status-emerald-border);
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+}
+
+.pulse-dot.breathing {
+  animation: livePulse 2s infinite var(--ease-spring);
+}
+
+@keyframes livePulse {
+  0% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.5; }
+}
+
+.shortcut-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--panel-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+
+/* Layout */
+main {
+  display: grid;
+  grid-template-columns: minmax(400px, 480px) 1fr;
+  gap: 20px;
+  padding: 20px 32px 40px;
+  max-width: 1680px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1040px) {
+  main { grid-template-columns: 1fr; padding: 16px; }
+}
+
+/* Bento Card Container */
+.bento-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 20px;
+  transition: border-color var(--duration-normal) var(--ease-spring), box-shadow var(--duration-normal) var(--ease-spring);
+}
+
+.bento-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-hover);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.card-title h2 {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title h2 svg {
+  color: var(--brand-600);
+}
+
+/* Quick Prompts */
+.quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.prompt-pill {
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--panel-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--duration-fast) var(--ease-spring);
+  user-select: none;
+}
+
+.prompt-pill:hover {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  border-color: var(--brand-100);
+  transform: translateY(-1px);
+}
+
+/* Form Controls & Inputs */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 12px 0 5px;
+}
+
+input, select, textarea {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text-main);
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-fast) var(--ease-spring);
+  box-sizing: border-box;
+}
+
+input, select {
+  height: 38px;
+  line-height: 36px;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+textarea {
+  min-height: 110px;
+  padding: 10px 12px;
+  resize: none;
+  line-height: 1.5;
+}
+
+textarea:focus, select:focus, input:focus {
+  outline: none;
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 3px var(--brand-glow), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Rows & Controls */
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.row.grid-2 {
+  align-items: flex-end;
+}
+
+.row.grid-2 > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.row > input, .row > select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Buttons */
+button {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  height: 38px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-medium);
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-fast) var(--ease-spring);
+  flex-shrink: 0;
+}
+
+button:hover:not(:disabled) {
+  background: var(--panel-subtle);
+  border-color: var(--border-strong);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button.primary {
+  background: var(--brand-600);
+  color: #FFFFFF;
+  border-color: var(--brand-600);
+  box-shadow: 0 2px 8px var(--brand-glow);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32);
+}
+
+button.primary:active:not(:disabled) {
+  background: var(--brand-900);
+}
+
+button.danger {
+  background: #FFF1F2;
+  color: var(--status-rose-text);
+  border-color: var(--status-rose-border);
+}
+
+button.danger:hover:not(:disabled) {
+  background: #FFE4E6;
+  border-color: #FDA4AF;
+  color: #9F1239;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin-top: 6px;
+}
+
+.err {
+  color: var(--status-rose-text);
+  font-size: 12px;
+  min-height: 16px;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* Status Chips */
+.status {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  line-height: 1;
+}
+
+.status.running { background: var(--status-amber-bg); color: var(--status-amber-text); border: 1px solid var(--status-amber-border); }
+.status.waiting { background: var(--status-amber-bg); color: var(--status-amber-text); border: 1px solid var(--status-amber-border); }
+.status.done { background: var(--status-emerald-bg); color: var(--status-emerald-text); border: 1px solid var(--status-emerald-border); }
+.status.failed, .status.unfinished, .status.stopped { background: var(--status-rose-bg); color: var(--status-rose-text); border: 1px solid var(--status-rose-border); }
+
+/* Human Attention Modal (.ask) */
+.ask {
+  border: 1px solid var(--status-amber-border);
+  background: linear-gradient(180deg, #FFFDF8 0%, #FFF9EB 100%);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin: 14px 0;
+  box-shadow: 0 4px 16px rgba(180, 83, 9, 0.08);
+}
+
+.ask .kind {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--status-amber-text);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ask .text {
+  font-size: 14px;
+  color: var(--text-main);
+  margin: 6px 0 12px;
+  white-space: pre-wrap;
+  font-weight: 600;
+}
+
+/* Tabs Switcher */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--panel-subtle);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  flex: 1;
+  height: 30px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  border-radius: 6px;
+}
+
+.tab-btn.active {
+  background: #FFFFFF;
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.5);
+  transform: none;
+}
+
+/* Live Execution Stream & Target Screen */
+.live {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 42%);
+  gap: 16px;
+  margin-top: 14px;
+}
+
+@media (max-width: 1180px) { .live { grid-template-columns: 1fr; } }
+
+.shot {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: #F8FAFC;
+  min-height: 150px;
+  object-fit: contain;
+  box-shadow: var(--shadow-sm);
+}
+
+ol.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+}
+
+ol.steps li {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+ol.steps li:last-child {
+  border-bottom: none;
+}
+
+ol.steps .goal {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 12.5px;
+}
+
+ol.steps .meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+code, .act {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--panel-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 2px 5px;
+  overflow-wrap: anywhere;
+}
+
+.result {
+  white-space: pre-wrap;
+  background: #F8FAFC;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* Activity Lists */
+.hist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hist li {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.hist li:last-child {
+  border-bottom: none;
+}
+
+.hist li:hover {
+  background: var(--panel-subtle);
+}
+
+.hist li:hover .t {
+  color: var(--brand-600);
+}
+
+.hist .t {
+  font-weight: 600;
+  color: var(--text-main);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--panel-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  color: var(--text-subtle);
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 12.5px;
+  max-width: 300px;
+  line-height: 1.45;
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--brand-600);
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-top: 6px;
+  user-select: none;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary::before {
+  content: "›";
+  font-size: 14px;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+/* Digest & Watchlist */
+.watch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--duration-fast) var(--ease-spring);
+}
+.watch:last-child { border-bottom: none; }
+.watch:hover { background: var(--panel-subtle); }
+.watch .t { flex: 1; min-width: 0; font-size: 12.5px; }
+.watch input[type="checkbox"] { width: 16px; height: 16px; margin: 0; cursor: pointer; }
+
+.dig-group {
+  margin-bottom: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  overflow: hidden;
+}
+.dig-group > summary {
+  padding: 10px 14px;
+  background: var(--panel-subtle);
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dig-group-body {
+  padding: 12px 14px;
+}
+.dig {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.dig:last-child { border-bottom: none; }
+.dig.newi {
+  border-left: 3px solid var(--brand-600);
+  padding-left: 10px;
+  background: var(--brand-50);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 4px 0;
+}
+.who { font-weight: 700; color: var(--text-main); }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  background: var(--panel-subtle);
+  color: var(--text-secondary);
+}
+.pill.bad {
+  background: var(--status-rose-bg);
+  color: var(--status-rose-text);
+  border-color: var(--status-rose-border);
+}
+.pill.warn {
+  background: var(--status-amber-bg);
+  color: var(--status-amber-text);
+  border-color: var(--status-amber-border);
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2"/>
+        <path d="M3 9h18"/>
+        <path d="M9 21V9"/>
+      </svg>
+    </div>
+    <div class="brand-info">
+      <h1>Browser Automation Suite</h1>
+      <p>Autonomous Web Operations &bull; Port 9222 Active</p>
+    </div>
+  </div>
+  
+  <div class="header-telemetry">
+    <span class="telemetry-chip"><span class="pulse-dot"></span><span>v2.6 Bento</span></span>
+    <span id="browserPill" class="telemetry-chip"><span class="pulse-dot"></span><span>target: …</span></span>
+    <span id="keyPill" class="telemetry-chip"><span class="pulse-dot"></span><span>key: …</span></span>
+  </div>
+  
+  <span class="spacer"></span>
+  <span class="shortcut-badge" id="hint">Ctrl / &#8984; + Enter to Dispatch</span>
+</header>
+
+<main>
+  <!-- Left Column: Command & Configuration Bento Cards -->
+  <div>
+    <!-- Command Dispatcher -->
+    <div class="bento-card">
+      <div class="card-title">
+        <h2>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>
+          </svg>
+          Command Dispatcher
+        </h2>
+      </div>
+
+      <!-- Quick Starter Prompts -->
+      <div class="quick-prompts">
+        <span class="prompt-pill" onclick="setPrompt('Go to LinkedIn and review my profile headline and recent experience. Summarize the key highlights in a structured markdown report.')">
+          LinkedIn Audit
+        </span>
+        <span class="prompt-pill" onclick="setPrompt('Go to Google Cloud Console > Cloud Run. List all deployed services, status, and endpoints in a table.')">
+          Cloud Run Inventory
+        </span>
+        <span class="prompt-pill" onclick="setPrompt('Go to GitHub. Inspect open pull requests across my recent repositories and summarize pending reviews.')">
+          GitHub PR Review
+        </span>
+        <span class="prompt-pill" onclick="setPrompt('Navigate to Hacker News (news.ycombinator.com), extract top 5 stories with point counts and links.')">
+          Hacker News Top 5
+        </span>
+      </div>
+
+      <textarea id="task" placeholder="Specify instructions across authenticated web surfaces (e.g. 'Go to LinkedIn and review my profile headline' or 'Inspect Google Cloud Run services and summarize status')..."></textarea>
+      
+      <label for="template">Workflow Templates</label>
+      <select id="template"><option value="">Select a template...</option></select>
+      
+      <div class="row grid-2">
+        <div><label for="model">Inference Model</label><select id="model"></select></div>
+        <div><label for="fallback">Fallback Model</label><select id="fallback"></select></div>
+      </div>
+      
+      <div class="row" style="margin-top:14px">
+        <button class="primary" id="runBtn" style="width:100%">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Dispatch Task
+        </button>
+      </div>
+
+      <!-- Follow-up & Fast Mode Bento Toggles -->
+      <div class="mode-toggles" style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--panel-subtle); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+        <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
+          <input type="checkbox" id="followUp" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
+          <span><b>Follow-up</b>: continue conversation (preserves context &amp; page)</span>
+        </label>
+        <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
+          <input type="checkbox" id="fast" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
+          <span><b>Fast mode</b>: short replies without reasoning monologue (34&ndash;46s)</span>
+        </label>
+      </div>
+
+      <div id="convo" style="margin-top: 10px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45;"></div>
+      <div class="err" id="runErr"></div>
+    </div>
+
+    <!-- Browser Session Target & Credentials (Unified Tile) -->
+    <div class="bento-card">
+      <div class="card-title">
+        <h2>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" x2="12" y1="8" y2="8"/><line x1="3.95" x2="8.54" y1="6.06" y2="14"/><line x1="10.88" x2="15.46" y1="21.94" y2="14"/>
+          </svg>
+          Browser Target & Credentials
+        </h2>
+      </div>
+      
+      <label for="bmode">Target Browser Driver</label>
+      <div class="row">
+        <select id="bmode">
+          <option value="auto">Auto (Active Chrome or Dedicated Profile)</option>
+          <option value="mine">My Chrome (Active Port 9222)</option>
+          <option value="agent">Dedicated Agent Window (Isolated Profile)</option>
+        </select>
+        <button id="bconnect">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+          Connect
+        </button>
+      </div>
+      
+      <label for="signinUrl">Dedicated Authentication Window (Logins Persist)</label>
+      <div class="row">
+        <input id="signinUrl" placeholder="linkedin.com, console.cloud.google.com">
+        <button id="signinBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" x2="12" y1="8" y2="8"/><line x1="3.95" x2="8.54" y1="6.06" y2="14"/><line x1="10.88" x2="15.46" y1="21.94" y2="14"/></svg>
+          Open Window
+        </button>
+      </div>
+      <p class="muted">Dedicated Chrome profile retains authentication cookies for LinkedIn, GCP, AWS, and enterprise SaaS permanently.</p>
+      <div class="err" id="bErr"></div>
+
+      <div style="border-top: 1px solid var(--border-subtle); margin: 16px 0 12px;"></div>
+
+      <label for="key">b.ai Inference Credentials</label>
+      <div class="row">
+        <input id="key" type="password" placeholder="sk-..." autocomplete="off">
+        <button id="keyBtn">Save Credentials</button>
+      </div>
+      <p class="muted">Stored locally in <code>~/.config/bai/key</code>.</p>
+      <div class="err" id="keyErr"></div>
+    </div>
+  </div>
+
+  <!-- Right Column: Live Execution & Historical Feed -->
+  <div>
+    <!-- Execution Pipeline / Now -->
+    <div class="bento-card">
+      <div class="card-title">
+        <h2>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          Active Execution Pipeline
+        </h2>
+        <div class="row" style="gap:6px; width:auto">
+          <button id="pauseBtn" disabled>Pause</button>
+          <button id="stopBtn" class="danger" disabled>Terminate</button>
+        </div>
+      </div>
+      <div id="now">
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/>
+            </svg>
+          </div>
+          <p>No active execution pipeline. Select a starter prompt or type an instruction on the left to begin.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- History & Queue Tabbed Tile -->
+    <div class="bento-card">
+      <div class="card-title">
+        <h2>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Activity & Turn History
+        </h2>
+      </div>
+      
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabHistoryBtn" onclick="switchTab('history')">Execution History</button>
+        <button class="tab-btn" id="tabQueueBtn" onclick="switchTab('queue')">Dispatch Queue</button>
+        <button class="tab-btn" id="tabDigestBtn" onclick="switchTab('digest')">Social Digest</button>
+      </div>
+
+      <div id="historyView">
+        <ul class="hist" id="history"></ul>
+      </div>
+      <div id="queueView" style="display:none">
+        <ul class="hist" id="queue"></ul>
+      </div>
+      <div id="digestView" style="display:none">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:8px;">
+          <div>
+            <h3 style="margin:0; font-size:13px; font-weight:700; color:var(--text-main);">Personal Intelligence Digest</h3>
+            <p class="muted" style="margin:2px 0 0;">Human-paced feed reading (DeepSeek v4.1 Flash). Deduplicated via SHA-1 fingerprints &amp; verified against CDP DOM text.</p>
+          </div>
+          <button id="digestRun" class="primary" style="height:34px; padding:0 12px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run Digest
+          </button>
+        </div>
+
+        <div id="digestItems"><div class="empty-state"><p>No digest runs recorded yet. Configure watchlist targets below, then click <b>Run Digest</b>.</p></div></div>
+
+        <details style="margin-top:16px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px 14px; background:var(--panel-subtle);">
+          <summary style="font-weight:600; color:var(--text-secondary); font-size:12px;">Watchlist &amp; Scheduled Delivery</summary>
+          <div style="margin-top:12px;">
+            <div id="watchList" style="margin-bottom:14px;"></div>
+            
+            <label style="margin:0 0 4px; font-size:11.5px; text-transform:uppercase; letter-spacing:0.04em;">Add New Feed Watch</label>
+            <div class="row">
+              <input id="wName" placeholder="Name (e.g. Priya on LinkedIn)">
+              <input id="wUrl" placeholder="URL (e.g. linkedin.com/in/priya/recent-activity/all/)">
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <input id="wFocus" placeholder="Focus filter (optional, e.g. job changes, launches)">
+              <input id="wScrolls" type="number" min="1" max="20" value="5" style="max-width:105px;" title="Maximum scrolls">
+              <input id="wLinks" type="number" min="0" max="10" value="3" style="max-width:105px;" title="Links in posts to read (0 = none)">
+              <button id="wAdd" style="flex:0 0 auto;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Watch
+              </button>
+            </div>
+            
+            <div style="border-top:1px solid var(--border-subtle); margin:12px 0 10px;"></div>
+            
+            <div class="row" style="align-items:center;">
+              <span class="muted" style="margin:0; font-weight:600;">Daily Schedule:</span>
+              <input id="dailyAt" type="time" style="max-width:130px; height:34px;">
+              <button id="dailySave" style="height:34px;">Save Schedule</button>
+              <span class="muted" style="margin:0;">(triggers automatically while dashboard is running)</span>
+            </div>
+            <div class="err" id="wErr"></div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const TOKEN = "__TOKEN__";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let S = null, lastPromptId = null, lastNowKey = "", initDone = false, titleTimer = null;
+
+function setPrompt(text) {
+  $("task").value = text;
+  $("task").focus();
+}
+
+function switchTab(t) {
+  $("historyView").style.display = t === 'history' ? "block" : "none";
+  $("queueView").style.display = t === 'queue' ? "block" : "none";
+  $("digestView").style.display = t === 'digest' ? "block" : "none";
+  $("tabHistoryBtn").classList.toggle("active", t === 'history');
+  $("tabQueueBtn").classList.toggle("active", t === 'queue');
+  $("tabDigestBtn").classList.toggle("active", t === 'digest');
+  if (t === 'digest') refreshLibrary();
+}
+
+async function api(path, body) {
+  const opt = { headers: { "X-Token": TOKEN } };
+  if (body !== undefined) { opt.method = "POST"; opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function initOnce(s) {
+  if (initDone) return; initDone = true;
+  const opts = s.models.map((m) => `<option value="${esc(m.id)}" title="${esc(m.note)}">${esc(m.label)}</option>`).join("");
+  $("model").innerHTML = opts; $("fallback").innerHTML = `<option value="">none</option>` + opts;
+  $("model").value = localStorage.getItem("model") || s.default;
+  $("fallback").value = localStorage.getItem("fallback") ?? s.fallback;
+  $("template").innerHTML = `<option value="">Select a template...</option>` + s.templates.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join("");
+  $("bmode").value = s.browser.mode;
+  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+}
+
+function beep() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination); o.frequency.value = 880; g.gain.value = .08; o.start(); o.stop(a.currentTime + .25);
+  } catch (e) {}
+}
+
+function attention(p) {
+  beep();
+  if ("Notification" in window && Notification.permission === "granted") new Notification("Browser Automation Suite Needs Attention", { body: p.text });
+  clearInterval(titleTimer); let on = false;
+  titleTimer = setInterval(() => { document.title = (on = !on) ? "Attention Required" : "Browser Automation Suite"; }, 900);
+}
+
+const KIND = {
+  ask: ["Input Required", "Enter response...", [["Submit", "primary", null]]],
+  handover: ["Manual Action in Browser", "Optional note (e.g. 'completed 2FA')", [["Continue Execution", "primary", null]]],
+  confirm: ["Authorization Required", "Or specify alternative instruction...", [["Authorize", "primary", "yes"], ["Decline", "danger", "no"]]],
+};
+
+function renderNow(c, paused) {
+  $("pauseBtn").disabled = $("stopBtn").disabled = !c;
+  $("pauseBtn").textContent = paused ? "Resume" : "Pause";
+  if (!c) {
+    $("now").innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/>
+          </svg>
+        </div>
+        <p>No active execution pipeline. Select a starter prompt or type an instruction on the left to begin.</p>
+      </div>`;
+    return;
+  }
+  const p = c.prompt;
+  let ask = "";
+  if (p) {
+    const [title, ph, btns] = KIND[p.kind] || ["Action Required", "Enter input...", [["Submit", "primary", null]]];
+    ask = `<div class="ask"><div class="kind">${title}</div><div class="text">${esc(p.text)}</div>
+      <div class="row"><input id="ans" placeholder="${ph}">${btns.map(([l, cls, v]) =>
+        `<button class="${cls}" data-v="${v ?? ""}" data-pid="${p.id}">${l}</button>`).join("")}</div></div>`;
+  }
+  const steps = c.steps.slice().reverse().map((s) => `<li><div class="goal"><span class="telemetry-chip" style="padding:2px 6px;margin-right:6px">Step ${s.n}</span> ${esc(s.goal || "Executing action...")}</div>
+    <div class="meta">${s.actions.map((a) => `<span class="act">${esc(a)}</span>`).join(" ")}</div>
+    <div class="meta" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">${esc(s.url)}</div></li>`).join("");
+  const keepAns = document.activeElement && document.activeElement.id === "ans" ? $("ans").value : null;
+  $("now").innerHTML = `<div class="muted" style="margin-bottom:6px">Model: <b style="color:var(--text-main)">${esc(c.model)}</b>${c.fallback ? " &rarr; " + esc(c.fallback) : ""}</div>
+    <div style="margin:4px 0 14px;font-size:14px;font-weight:600"><span class="status ${c.status}">${paused ? "paused" : c.status}</span> &bull; ${esc(c.task.slice(0, 220))}</div>
+    ${ask}
+    <div class="live"><ol class="steps">${steps || '<li class="muted">Initializing execution pipeline...</li>'}</ol>
+    <img class="shot" id="shot" alt="Target Browser Canvas"></div>`;
+  if (keepAns !== null && $("ans")) { $("ans").value = keepAns; $("ans").focus(); }
+  if (c.has_shot) $("shot").src = `/api/shot?token=${TOKEN}&s=${c.steps.length}`;
+  else $("shot").style.display = "none";
+  document.querySelectorAll(".ask button").forEach((b) => b.onclick = () => sendAnswer(b.dataset.pid, b.dataset.v));
+  if ($("ans")) $("ans").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); sendAnswer(p.id, p.kind === "confirm" ? "" : null); } };
+}
+
+async function sendAnswer(pid, preset) {
+  const typed = $("ans") ? $("ans").value.trim() : "";
+  const answer = preset === "yes" ? (typed ? "yes. " + typed : "yes") : preset === "no" ? (typed || "no") : typed;
+  try { await api("/api/answer", { prompt_id: pid, answer }); } catch (e) { alert(e.message); }
+  clearInterval(titleTimer); document.title = "Browser Automation Suite"; refresh();
+}
+
+function renderList(el, rows, empty, withCancel) {
+  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result]));
+  if (el.dataset.lastKey === key) return;
+
+  const openIds = new Set();
+  el.querySelectorAll("li[data-id]").forEach(li => {
+    const det = li.querySelector("details");
+    if (det && det.open) openIds.add(li.dataset.id);
+  });
+
+  el.dataset.lastKey = key;
+  el.innerHTML = rows.length ? rows.map((r) => `<li data-id="${r.id}" data-task="${esc(r.task)}">
+    <div class="t">${esc(r.task)}</div>
+    <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
+    ${withCancel ? ` &bull; <a href="#" data-cancel="${r.id}" style="color:var(--status-rose-text);font-weight:600;text-decoration:none">Cancel</a>` : ""}</div>
+    ${r.result ? `<details ${openIds.has(String(r.id)) ? 'open' : ''}><summary>View Execution Summary</summary><div class="result">${esc(r.result)}</div></details>` : ""}</li>`).join("")
+    : `<li class="muted" style="cursor:default;padding:16px 0;text-align:center">${empty}</li>`;
+  el.querySelectorAll("li[data-task] .t").forEach((t) => t.onclick = () => { $("task").value = t.parentElement.dataset.task; $("task").focus(); });
+  el.querySelectorAll("[data-cancel]").forEach((a) => a.onclick = async (e) => { e.preventDefault(); await api("/api/control", { action: "cancel", id: +a.dataset.cancel }); refresh(); });
+}
+
+async function refresh() {
+  try { S = await api("/api/state"); } catch (e) { $("browserPill").textContent = "Service Offline"; return; }
+  initOnce(S);
+  const isConn = S.browser.where !== "not connected";
+  $("browserPill").innerHTML = `<span class="pulse-dot ${isConn ? 'breathing' : ''}"></span><span>target: ${S.browser.where}</span>`;
+  $("browserPill").classList.toggle("on", isConn);
+  $("keyPill").innerHTML = `<span class="pulse-dot"></span><span>key: ${S.key_set ? "configured" : "missing"}</span>`;
+  $("keyPill").classList.toggle("on", S.key_set);
+  const c = S.current;
+  const pid = c && c.prompt ? c.prompt.id : null;
+  if (pid && pid !== lastPromptId) attention(c.prompt);
+  if (!pid) { clearInterval(titleTimer); document.title = "Browser Automation Suite"; }
+  const nowKey = JSON.stringify([c, S.paused]);
+  const typing = document.activeElement && document.activeElement.id === "ans" && pid === lastPromptId;
+  if (nowKey !== lastNowKey && !typing) { renderNow(c, S.paused); lastNowKey = nowKey; }
+  lastPromptId = pid;
+  
+  const cv = S.conversation || {};
+  if ($("convo")) {
+    if (cv.active) {
+      $("convo").innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--brand-50); border:1px solid var(--brand-100); border-radius:6px; padding:6px 10px; color:var(--brand-900);">
+          <span>Thread active: <b>${cv.turns} turn${cv.turns === 1 ? '' : 's'}</b> with ${esc(cv.model)}</span>
+          <a href="#" id="newConvo" style="font-size:11px; font-weight:600; color:var(--brand-700); text-decoration:none;">New Conversation &rarr;</a>
+        </div>`;
+      if ($("newConvo")) {
+        $("newConvo").onclick = async (e) => {
+          e.preventDefault();
+          try { await api("/api/new", {}); refresh(); } catch (err) { $("runErr").textContent = err.message; }
+        };
+      }
+    } else {
+      $("convo").innerHTML = `<span style="color:var(--text-muted)">Thread standby &bull; Next dispatch starts fresh in a new tab.</span>`;
+    }
+  }
+
+  $("tabHistoryBtn").textContent = `Execution History (${(S.history || []).length})`;
+  $("tabQueueBtn").textContent = `Dispatch Queue (${(S.queue || []).length})`;
+  
+  renderList($("queue"), S.queue, "Dispatch queue is empty.", true);
+  renderList($("history"), S.history, "No completed executions yet.", false);
+}
+
+$("runBtn").onclick = async () => {
+  $("runErr").textContent = "";
+  const task = $("task").value.trim();
+  if (!task) { $("runErr").textContent = "Specify an instruction first."; return; }
+  localStorage.setItem("model", $("model").value); localStorage.setItem("fallback", $("fallback").value);
+  try {
+    await api("/api/run", {
+      task,
+      model: $("model").value,
+      fallback: $("fallback").value || null,
+      follow_up: $("followUp").checked,
+      fast: $("fast").checked
+    });
+    $("task").value = "";
+    refresh();
+  }
+  catch (e) { $("runErr").textContent = e.message; }
+};
+$("task").onkeydown = (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("runBtn").click(); };
+$("template").onchange = () => { const t = S && S.templates[$("template").value]; if (t) $("task").value = t.text; };
+$("pauseBtn").onclick = () => api("/api/control", { action: S && S.paused ? "resume" : "pause" }).then(refresh);
+$("stopBtn").onclick = () => { if (confirm("Terminate active execution pipeline?")) api("/api/control", { action: "stop" }).then(refresh); };
+$("bconnect").onclick = async () => {
+  $("bErr").textContent = "Connecting to target... (click Allow in Chrome if prompted)";
+  try { const r = await api("/api/browser", { mode: $("bmode").value }); $("bErr").textContent = ""; refresh(); }
+  catch (e) { $("bErr").textContent = e.message; }
+};
+$("signinBtn").onclick = async () => {
+  $("bErr").textContent = "";
+  try {
+    await api("/api/signin", { url: $("signinUrl").value.trim() });
+    $("bErr").textContent = "Dedicated window opened. Log into your accounts, tick 'keep me signed in', then close that window (✕) to save cookies.";
+  } catch (e) { $("bErr").textContent = e.message; }
+};
+$("keyBtn").onclick = async () => {
+  $("keyErr").textContent = "";
+  try { await api("/api/key", { key: $("key").value }); $("key").value = ""; refresh(); }
+  catch (e) { $("keyErr").textContent = e.message; }
+};
+
+let L = null, libKey = "";
+async function refreshLibrary() {
+  try { L = await api("/api/library"); } catch (e) { return; }
+  const key = JSON.stringify(L);
+  if (key === libKey) return;
+  libKey = key;
+
+  $("watchList").innerHTML = L.watches.length ? L.watches.map((w) => `<div class="watch">
+      <input type="checkbox" data-wt="${w.id}" ${w.enabled ? "checked" : ""} style="width:auto" title="Include in digest">
+      <div class="t"><b>${esc(w.name)}</b> <span class="muted">&bull; up to ${w.max_scrolls} scrolls &bull; reads ${w.open_links ?? 3} link(s)${w.focus ? " &bull; focus: " + esc(w.focus) : ""}</span><div class="muted" style="font-family:var(--font-mono);font-size:11px;">${esc(w.url)}</div></div>
+      <a href="#" data-wr="${w.id}" style="color:var(--status-rose-text);font-weight:600;font-size:11.5px;text-decoration:none;">Remove</a></div>`).join("") : `<div class="muted" style="padding:6px 0;">No watchlist targets registered.</div>`;
+  
+  document.querySelectorAll("[data-wt]").forEach((c) => c.onchange = () => api("/api/watches", { action: "toggle", id: c.dataset.wt, enabled: c.checked }).then(refreshLibrary));
+  document.querySelectorAll("[data-wr]").forEach((a) => a.onclick = (e) => { e.preventDefault(); api("/api/watches", { action: "remove", id: a.dataset.wr }).then(refreshLibrary); });
+  
+  if (document.activeElement !== $("dailyAt")) $("dailyAt").value = L.settings.daily_at || "";
+  
+  const runs = L.digests || [];
+  const openDigestIds = new Set();
+  document.querySelectorAll("#digestItems details[data-at]").forEach(det => {
+    if (det.open) openDigestIds.add(det.dataset.at);
+  });
+
+  $("digestItems").innerHTML = runs.length ? runs.slice(0, 15).map((d) => {
+    const items = d.items.slice().sort((a, b) => b.new - a.new);
+    const nNew = items.filter((i) => i.new).length;
+    const atKey = String(d.at);
+    const isOpen = openDigestIds.has(atKey) || (openDigestIds.size === 0 && nNew > 0);
+    return `<details class="dig-group" data-at="${atKey}" ${isOpen ? "open" : ""}>
+      <summary><span><b>${esc(d.watch)}</b> &bull; ${nNew} new / ${items.length} total &bull; ${new Date(d.at * 1000).toLocaleString()}</span></summary>
+      <div class="dig-group-body">
+        ${d.notes ? `<div class="muted" style="margin-bottom:8px;">${esc(d.notes)}</div>` : ""}
+        ${items.map((i) => `<div class="dig ${i.new ? "newi" : ""}">
+          <div><span class="who">${esc(i.author)}</span> <span class="muted">&bull; ${esc(i.when)}${i.new ? ' &bull; <b style="color:var(--brand-600)">NEW</b>' : ""}</span>
+          ${i.check === "corrected" ? ' <span class="pill warn" title="Quote was fuzzy-matched to real DOM text">verbatim text corrected</span>' : i.check === "unverified" ? ' <span class="pill bad" title="Could not locate verbatim quote in CDP DOM">unverified</span>' : ""}</div>
+          <div style="margin:4px 0;">${esc(i.summary)}</div>
+          ${(i.links || []).map((l) => `<div class="muted" style="margin:4px 0 0 12px;">↳ linked: <b>${esc(l.title || l.url)}</b>: ${esc(l.summary)} ${/^https?:\/\//i.test(l.url || "") ? `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--brand-600);text-decoration:none;font-weight:600;">open &rarr;</a>` : ""}</div>`).join("")}
+          ${i.text ? `<details style="margin-top:6px;"><summary style="font-size:11px;">View Captured DOM Text</summary><div class="result">${esc(i.text)}</div></details>` : ""}
+          ${/^https?:\/\//i.test(i.url || "") ? `<div style="margin-top:4px;"><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--brand-600);text-decoration:none;font-weight:600;font-size:11px;">View original post &rarr;</a></div>` : ""}
+        </div>`).join("") || '<div class="muted">No posts extracted on this run.</div>'}
+      </div>
+    </details>`;
+  }).join("") : `<div class="empty-state"><p>No digest runs recorded yet. Configure watchlist targets below, then click <b>Run Digest</b>.</p></div>`;
+}
+
+$("wAdd").onclick = async () => {
+  $("wErr").textContent = "";
+  try {
+    await api("/api/watches", {
+      action: "add",
+      name: $("wName").value,
+      url: $("wUrl").value,
+      focus: $("wFocus").value,
+      max_scrolls: +$("wScrolls").value || 5,
+      open_links: $("wLinks").value === "" ? 3 : +$("wLinks").value
+    });
+    $("wName").value = $("wUrl").value = $("wFocus").value = "";
+    refreshLibrary();
+  } catch (e) { $("wErr").textContent = e.message; }
+};
+
+$("dailySave").onclick = async () => {
+  $("wErr").textContent = "";
+  try {
+    await api("/api/watches", { action: "schedule", daily_at: $("dailyAt").value });
+    $("wErr").textContent = $("dailyAt").value ? "Saved: scheduled daily at " + $("dailyAt").value + "." : "Daily schedule disabled.";
+    refreshLibrary();
+  } catch (e) { $("wErr").textContent = e.message; }
+};
+
+$("digestRun").onclick = async () => {
+  try {
+    const r = await api("/api/watches", {
+      action: "run",
+      model: $("model").value,
+      fallback: $("fallback").value || null,
+      fast: $("fast").checked
+    });
+    if (r.queued) {
+      switchTab('queue');
+      refresh();
+    } else {
+      alert("No active watchlist targets found. Add pages in the watchlist below first.");
+    }
+  } catch (e) { alert(e.message); }
+};
+
+refresh();
+refreshLibrary();
+setInterval(refresh, 1200);
+setInterval(refreshLibrary, 5000);
+</script>
+</body>
+</html>

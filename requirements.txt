@@ -1,0 +1,3 @@
+browser-use>=0.13,<0.14
+starlette>=0.40
+uvicorn>=0.30

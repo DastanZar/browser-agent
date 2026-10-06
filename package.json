@@ -1,0 +1,12 @@
+{
+  "name": "browser-automation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "replay": "node replay.mjs",
+    "record": "playwright codegen --target javascript"
+  },
+  "dependencies": {
+    "playwright": "^1.56.1"
+  }
+}

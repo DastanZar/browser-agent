@@ -1,0 +1,30 @@
+BROWSER AGENT - HOW TO RUN IT (Windows)
+=======================================
+
+This runs on YOUR computer (it drives your Chrome). Nothing runs in the Claude chat.
+
+ONE-TIME SETUP
+1. Install Python 3.11 or newer: https://www.python.org/downloads/
+   On the first installer screen, TICK "Add python.exe to PATH", then Install.
+   (Already have it? Skip this. Check by typing  py -0p  in a terminal.)
+2. Unzip this folder somewhere permanent, e.g. Documents\browser-agent.
+
+EVERY TIME
+3. Double-click  "Start Browser Agent.cmd".
+   - The first time, a black window installs things for a few minutes. Let it finish.
+   - Then your browser opens http://127.0.0.1:8770 : that's the dashboard.
+   - Keep the black window open while you use it. Close it to stop.
+
+IN THE DASHBOARD (first time only)
+4. "b.ai API key" box: paste your key, click Save.
+5. "Browser" box: choose "Agent window". Type a site you want it to use (e.g. linkedin.com),
+   click Open, and log in in the Chrome window that appears. Repeat for other sites.
+   These logins are remembered.
+
+THEN
+6. Type a task in "New task" (plain English) and click Run task.
+   It works in that Chrome window. If it needs you (a question, a login, an approval
+   before paying/sending/deleting), the dashboard beeps and shows a card: answer it there.
+
+Something wrong? The black window shows the error. Send that text to Claude.
+Mac/Linux: run ./dashboard.sh instead of step 3.
