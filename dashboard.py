@@ -413,6 +413,10 @@ async def run_task(request: Request):
     task = (body.get("task") or "").strip()
     model = body.get("model") or core.CONFIG["default"]
     fallback = body.get("fallback") or None
+    bmode = body.get("browser_mode")
+    if bmode in ("mine", "agent", "auto") and bmode != studio.browser_mode:
+        studio.browser_mode = bmode
+        await studio.drop_browser()
     if not task:
         return JSONResponse({"error": "empty task"}, status_code=400)
     if model not in core.MODELS or (fallback and fallback not in core.MODELS):
@@ -486,8 +490,10 @@ async def control(request: Request):
 @guard
 async def set_browser(request: Request):
     mode = (await request.json()).get("mode")
+    if mode == "ask":
+        return JSONResponse({"ok": True, "where": "Prompt before each run"})
     if mode not in ("auto", "mine", "agent"):
-        return JSONResponse({"error": "mode must be auto, mine or agent"}, status_code=400)
+        return JSONResponse({"error": "mode must be auto, mine, agent, or ask"}, status_code=400)
     if studio.current:
         return JSONResponse({"error": "wait for the current task to finish"}, status_code=409)
     studio.browser_mode = mode

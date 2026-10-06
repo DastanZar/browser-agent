@@ -879,37 +879,16 @@ details[open] summary::before {
       <label for="bmode">Target Browser Driver</label>
       <div class="row">
         <select id="bmode">
-          <option value="auto">Auto: my Chrome if connected, else the agent browser</option>
-          <option value="mine">My Chrome (Active Port 9222)</option>
-          <option value="agent">Dedicated Agent Window (Virtual Profile)</option>
+          <option value="ask">Ask on Run (Live Chrome or Virtual Browser)</option>
+          <option value="mine">Always Use My Live Chrome</option>
+          <option value="agent">Always Use Virtual Browser (Saved Logins)</option>
         </select>
         <button id="bconnect">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
           Connect
         </button>
-        <button type="button" id="openAgentBtn" title="Open the agent browser (its own profile with your saved logins) now">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
-          Open agent browser
-        </button>
-        <button type="button" id="openInspectBtn" title="Open chrome://inspect in your browser to enable remote debugging">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Inspect
-        </button>
       </div>
-      
-      <label for="signinUrl">Dedicated Authentication Window (Logins Persist)</label>
-      <div class="row">
-        <input id="signinUrl" placeholder="linkedin.com, console.cloud.google.com">
-        <button id="signinBtn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" x2="12" y1="8" y2="8"/><line x1="3.95" x2="8.54" y1="6.06" y2="14"/><line x1="10.88" x2="15.46" y1="21.94" y2="14"/></svg>
-          Open Window
-        </button>
-        <button type="button" id="syncProfileBtn" title="Sync saved cookies and accounts from your regular Chrome into the virtual browser">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-          Sync Logins
-        </button>
-      </div>
-      <p class="muted">Click <b>Sync Logins</b> to import your saved accounts &amp; cookies from your everyday Chrome into the virtual browser, or use <b>Inspect</b> to attach to open Chrome tabs directly.</p>
+      <p class="muted">When set to <b>Ask on Run</b>, a prompt will ask if you want to use your live Chrome or go straight to the virtual browser with saved logins.</p>
       <p class="muted" id="nextBrowser"></p>
       <div class="err" id="bErr"></div>
 
@@ -1084,6 +1063,46 @@ details[open] summary::before {
       </div>
     </div>
   </div>
+
+  <!-- Browser Choice Pop-up Modal -->
+  <div id="browserModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; width:100%; max-width:440px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); border:1px solid var(--border-subtle); padding:24px; margin:16px;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+        <div style="width:36px; height:36px; border-radius:8px; background:var(--brand-50); color:var(--brand-600); display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" x2="12" y1="8" y2="8"/><line x1="3.95" x2="8.54" y1="6.06" y2="14"/><line x1="10.88" x2="15.46" y1="21.94" y2="14"/></svg>
+        </div>
+        <div>
+          <h3 style="margin:0; font-size:15px; font-weight:700; color:var(--text-main);">Target Browser</h3>
+          <p style="margin:2px 0 0; font-size:12px; color:var(--text-muted);">Choose which browser to execute this task</p>
+        </div>
+      </div>
+      
+      <div style="font-size:14px; font-weight:600; color:var(--text-main); margin:16px 0 8px;">
+        Use your live Chrome?
+      </div>
+      <p style="font-size:12.5px; color:var(--text-secondary); line-height:1.45; margin:0 0 20px;">
+        If you choose <b>No</b>, the agent goes directly to the virtual browser with your saved logins (LinkedIn, Google, etc.).
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button type="button" id="modalLiveChromeBtn" style="width:100%; justify-content:center; padding:11px; font-size:13px; font-weight:600; background:var(--brand-600); color:#fff; border:none; border-radius:6px; cursor:pointer;">
+          Yes, Use My Live Chrome
+        </button>
+        <button type="button" id="modalVirtualBrowserBtn" style="width:100%; justify-content:center; padding:11px; font-size:13px; font-weight:600; background:var(--panel-subtle); color:var(--text-main); border:1px solid var(--border-subtle); border-radius:6px; cursor:pointer;">
+          No, Go to Virtual Browser (Saved Logins)
+        </button>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:16px; padding-top:12px; border-top:1px solid var(--border-subtle);">
+        <label style="font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px; cursor:pointer; text-transform:none; letter-spacing:normal;">
+          <input type="checkbox" id="modalRemember"> Remember my choice
+        </label>
+        <button type="button" id="modalCancelBtn" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; padding:4px 8px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -1123,7 +1142,7 @@ function initOnce(s) {
   $("model").value = localStorage.getItem("model") || s.default;
   $("fallback").value = localStorage.getItem("fallback") ?? s.fallback;
   $("template").innerHTML = `<option value="">Select a template...</option>` + s.templates.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join("");
-  $("bmode").value = s.browser.mode;
+  $("bmode").value = localStorage.getItem("browser_mode_pref") || "ask";
   if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
 }
 
@@ -1328,7 +1347,21 @@ $("runBtn").onclick = async () => {
   $("runErr").textContent = "";
   const task = $("task").value.trim();
   if (!task) { $("runErr").textContent = "Specify an instruction first."; return; }
-  localStorage.setItem("model", $("model").value); localStorage.setItem("fallback", $("fallback").value);
+
+  const mode = $("bmode").value;
+  if (mode === "ask") {
+    $("browserModal").style.display = "flex";
+  } else {
+    dispatchTask(mode);
+  }
+};
+
+async function dispatchTask(browserMode) {
+  $("runErr").textContent = "";
+  const task = $("task").value.trim();
+  if (!task) { $("runErr").textContent = "Specify an instruction first."; return; }
+  localStorage.setItem("model", $("model").value);
+  localStorage.setItem("fallback", $("fallback").value);
   try {
     await api("/api/run", {
       task,
@@ -1337,15 +1370,40 @@ $("runBtn").onclick = async () => {
       follow_up: $("followUp").checked,
       fast: $("fast").checked,
       turbo: $("turbo").checked,
-      optimized: isPromptOptimized
+      optimized: isPromptOptimized,
+      browser_mode: browserMode
     });
     $("task").value = "";
     isPromptOptimized = false;
     if ($("optNotice")) $("optNotice").style.display = "none";
     refresh();
+  } catch (e) {
+    $("runErr").textContent = e.message;
   }
-  catch (e) { $("runErr").textContent = e.message; }
+}
+
+$("modalLiveChromeBtn").onclick = () => {
+  $("browserModal").style.display = "none";
+  if ($("modalRemember").checked) {
+    $("bmode").value = "mine";
+    localStorage.setItem("browser_mode_pref", "mine");
+  }
+  dispatchTask("mine");
 };
+
+$("modalVirtualBrowserBtn").onclick = () => {
+  $("browserModal").style.display = "none";
+  if ($("modalRemember").checked) {
+    $("bmode").value = "agent";
+    localStorage.setItem("browser_mode_pref", "agent");
+  }
+  dispatchTask("agent");
+};
+
+$("modalCancelBtn").onclick = () => {
+  $("browserModal").style.display = "none";
+};
+
 $("task").onkeydown = (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("runBtn").click(); };
 $("template").onchange = () => { const t = S && S.templates[$("template").value]; if (t) $("task").value = t.text; };
 $("pauseBtn").onclick = () => api("/api/control", { action: S && S.paused ? "resume" : "pause" }).then(refresh);
@@ -1355,48 +1413,6 @@ $("bconnect").onclick = async () => {
   try { const r = await api("/api/browser", { mode: $("bmode").value }); $("bErr").textContent = ""; refresh(); }
   catch (e) { $("bErr").textContent = e.message; }
 };
-$("signinBtn").onclick = async () => {
-  $("bErr").textContent = "";
-  try {
-    await api("/api/signin", { url: $("signinUrl").value.trim() });
-    $("bErr").textContent = "Dedicated window opened. Log into your accounts, tick 'keep me signed in', then close that window (✕) to save cookies.";
-  } catch (e) { $("bErr").textContent = e.message; }
-};
-if ($("openInspectBtn")) {
-  $("openAgentBtn").onclick = async () => {
-    $("bErr").textContent = "Opening the agent browser…";
-    try { const r = await api("/api/browser/open_agent", {}); $("bmode").value = "agent"; $("bErr").textContent = "Agent browser open: " + r.where; refresh(); }
-    catch (e) { $("bErr").textContent = e.message; }
-  };
-  $("openInspectBtn").onclick = async () => {
-    $("bErr").textContent = "Opening chrome://inspect/#remote-debugging...";
-    try {
-      await api("/api/browser/open_inspect", {});
-      $("bErr").textContent = "In Chrome, enable 'Remote debugging', select 'My Chrome' above, and click Connect.";
-    } catch (e) { $("bErr").textContent = e.message; }
-  };
-}
-if ($("syncProfileBtn")) {
-  $("syncProfileBtn").onclick = async () => {
-    const btn = $("syncProfileBtn");
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.textContent = "Syncing...";
-    $("bErr").textContent = "";
-    try {
-      const res = await api("/api/profile/sync", {});
-      $("bErr").style.color = res && res.ok ? "var(--status-emerald-text)" : "var(--status-rose-text)";
-      $("bErr").textContent = res ? res.message : "Sync completed.";
-      setTimeout(() => { $("bErr").style.color = ""; }, 8000);
-    } catch (e) {
-      $("bErr").style.color = "var(--status-rose-text)";
-      $("bErr").textContent = e.message;
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = orig;
-    }
-  };
-}
 $("keyBtn").onclick = async () => {
   $("keyErr").textContent = "";
   try { await api("/api/key", { key: $("key").value }); $("key").value = ""; refresh(); }

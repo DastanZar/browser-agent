@@ -2,6 +2,14 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Antigravity · Simplify browser selection to pop-up modal and strip dashboard clutter
+
+- Simplified browser UX: removed manual "Inspect", "Sync Logins", and sign-in window buttons and clutter from dashboard.
+- Pop-up modal: clicking Run now asks "Use your live Chrome?" with two direct options: "Yes, Use My Live Chrome" or "No, Go to Virtual Browser (Saved Logins)", with an optional "Remember my choice" checkbox.
+- Automatic credentials: the virtual browser auto-imports saved logins and profile data silently in the background without manual sync steps.
+- Evidence: offline tests pass.
+- For the other agent: `bmode` can now be `"ask"` (default), `"mine"`, or `"agent"`. `/api/run` accepts `browser_mode` directly from modal dispatch.
+
 ## 2026-10-07 · Claude Code · "Open agent browser" button; show which browser the next task uses
 
 - The owner asked for this: when they haven't chosen their own Chrome, tasks should open the agent browser (its
