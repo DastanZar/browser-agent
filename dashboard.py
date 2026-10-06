@@ -30,7 +30,7 @@ import socket
 import core
 import digest
 
-HOST = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
+HOST = os.environ.get("DASHBOARD_HOST", "0.0.0.0")
 PORT = int(os.environ.get("DASHBOARD_PORT", "8770"))
 TOKEN = os.environ.get("DASHBOARD_TOKEN") or secrets.token_urlsafe(24)
 
