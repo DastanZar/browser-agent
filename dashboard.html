@@ -881,11 +881,15 @@ details[open] summary::before {
         <select id="bmode">
           <option value="auto">Auto (Active Chrome or Dedicated Profile)</option>
           <option value="mine">My Chrome (Active Port 9222)</option>
-          <option value="agent">Dedicated Agent Window (Isolated Profile)</option>
+          <option value="agent">Dedicated Agent Window (Virtual Profile)</option>
         </select>
         <button id="bconnect">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
           Connect
+        </button>
+        <button type="button" id="openInspectBtn" title="Open chrome://inspect in your browser to enable remote debugging">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Inspect
         </button>
       </div>
       
@@ -896,8 +900,12 @@ details[open] summary::before {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" x2="12" y1="8" y2="8"/><line x1="3.95" x2="8.54" y1="6.06" y2="14"/><line x1="10.88" x2="15.46" y1="21.94" y2="14"/></svg>
           Open Window
         </button>
+        <button type="button" id="syncProfileBtn" title="Sync saved cookies and accounts from your regular Chrome into the virtual browser">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          Sync Logins
+        </button>
       </div>
-      <p class="muted">Dedicated Chrome profile retains authentication cookies for LinkedIn, GCP, AWS, and enterprise SaaS permanently.</p>
+      <p class="muted">Click <b>Sync Logins</b> to import your saved accounts &amp; cookies from your everyday Chrome into the virtual browser, or use <b>Inspect</b> to attach to open Chrome tabs directly.</p>
       <div class="err" id="bErr"></div>
 
       <div style="border-top: 1px solid var(--border-subtle); margin: 16px 0 12px;"></div>
@@ -1348,6 +1356,36 @@ $("signinBtn").onclick = async () => {
     $("bErr").textContent = "Dedicated window opened. Log into your accounts, tick 'keep me signed in', then close that window (✕) to save cookies.";
   } catch (e) { $("bErr").textContent = e.message; }
 };
+if ($("openInspectBtn")) {
+  $("openInspectBtn").onclick = async () => {
+    $("bErr").textContent = "Opening chrome://inspect/#remote-debugging...";
+    try {
+      await api("/api/browser/open_inspect", {});
+      $("bErr").textContent = "In Chrome, enable 'Remote debugging', select 'My Chrome' above, and click Connect.";
+    } catch (e) { $("bErr").textContent = e.message; }
+  };
+}
+if ($("syncProfileBtn")) {
+  $("syncProfileBtn").onclick = async () => {
+    const btn = $("syncProfileBtn");
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Syncing...";
+    $("bErr").textContent = "";
+    try {
+      const res = await api("/api/profile/sync", {});
+      $("bErr").style.color = res && res.ok ? "var(--status-emerald-text)" : "var(--status-rose-text)";
+      $("bErr").textContent = res ? res.message : "Sync completed.";
+      setTimeout(() => { $("bErr").style.color = ""; }, 8000);
+    } catch (e) {
+      $("bErr").style.color = "var(--status-rose-text)";
+      $("bErr").textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  };
+}
 $("keyBtn").onclick = async () => {
   $("keyErr").textContent = "";
   try { await api("/api/key", { key: $("key").value }); $("key").value = ""; refresh(); }

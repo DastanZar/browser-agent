@@ -90,7 +90,10 @@ def extract_target_url(task: str) -> str | None:
                 return COMMON_DOMAINS[name]
 
     # 4. Search substrings against COMMON_DOMAINS (longest keys first)
-    text_lower = text.lower()
+    # Skip if prompt explicitly targets existing tab/page context
+    if re.search(r'\b(?:this\s+page|this\s+tab|current\s+tab|active\s+tab)\b', text_lower):
+        return None
+
     for name in sorted(COMMON_DOMAINS.keys(), key=len, reverse=True):
         if re.search(r'\b' + re.escape(name) + r'\b', text_lower):
             return COMMON_DOMAINS[name]
@@ -134,8 +137,8 @@ GUIDELINES FOR COMPILATION:
    - Phase 1: Navigation & Query Entry
    - Phase 2: Result Filtering (e.g. Filter by People, Location if applicable)
    - Phase 3: Extraction Schema (specify exact fields to capture: Name, Current Title, Company, Profile URL)
-   - Phase 4: Action/Interaction Rules (e.g. "Click Connect -> Add note or Send without note -> Cancel if 2FA/email needed")
-4. Safety & Guardrails: Specify max targets (e.g. "Extract first 5-10 profiles to avoid rate limits").
+   - Phase 4: Action/Interaction Rules (specify exact buttons/form elements to interact with, modal handling, and stop conditions if 2FA/verification needed)
+4. Safety & Guardrails: Specify max targets (e.g. "Extract first 5-10 profiles to avoid rate limits"), respect site limits, and never attempt bypassing authentication gates.
 5. Output format: Return concise, structured markdown ready for direct execution.
 """
 

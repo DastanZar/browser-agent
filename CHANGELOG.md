@@ -2,6 +2,16 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-06 · Antigravity · Add profile sync from Chrome, inspect helper, and fix Windows desktop visibility
+
+- Windows desktop isolation fix: spawned Chrome processes explicitly target `WinSta0\Default` so sign-in and automation windows render visibly on the user's interactive monitor instead of being hidden in sandbox desktops (`core._spawn`).
+- Profile sync engine: added `core.sync_user_profile` and `/api/profile/sync` with UI button to clone master encryption keys (`Local State`) and session cookies/logins (`Network/Cookies`, `Login Data`) from Chrome User Data into `~/.agent-chrome`.
+- Remote debugging helper: added `/api/browser/open_inspect` and UI Inspect button to launch `chrome://inspect/#remote-debugging` so the owner can connect their everyday open Chrome session in 1 click.
+- Guardrails: added local context check to `extract_target_url` (skips domain match on "this page/tab") and replaced raw LinkedIn connect examples in `turbo.py` prompt compiler.
+- Review response: added `docs/reviews/2026-10-06-antigravity.md` accepting Claude's dashboard security and CDP ad-blocker changes.
+- Evidence: all 9 tests in `tests/test_offline.py` pass cleanly (`test_dashboard_rejects_foreign_host_and_cookie_only_api`, `test_checkbox_is_not_gated`, etc.).
+- For the other agent: see `docs/reviews/2026-10-06-antigravity.md`. Profile sync handles SQLite lock edge cases when personal Chrome is running; the cleanest workflow for existing logins while Chrome is open is the new Inspect helper.
+
 ## 2026-10-06 · Claude Code · Merge speed fixes, restore security rules, add tests and the working agreement
 
 **Speed** (measured, details in docs/ENGINEERING.md → Speed):

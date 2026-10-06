@@ -12,12 +12,17 @@ import itertools
 import json
 import os
 import secrets
+import sys
 import threading
 import time
 import urllib.request
 import webbrowser
 from datetime import datetime
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 import uvicorn
 from starlette.applications import Starlette
@@ -517,6 +522,31 @@ async def signin_window(request: Request):
     return JSONResponse({"ok": True})
 
 
+@guard
+async def profile_sync_endpoint(request: Request):
+    if studio.current:
+        return JSONResponse({"error": "wait for the current task to finish"}, status_code=409)
+    try:
+        body = await request.json() if request.headers.get("content-type") == "application/json" else {}
+        prefer = body.get("profile") if isinstance(body, dict) else None
+    except Exception:
+        prefer = None
+    try:
+        ok, msg = await asyncio.to_thread(core.sync_user_profile, prefer)
+        return JSONResponse({"ok": ok, "message": msg})
+    except Exception as e:
+        return JSONResponse({"ok": False, "message": str(e)}, status_code=500)
+
+
+@guard
+async def open_inspect_endpoint(request: Request):
+    try:
+        await asyncio.to_thread(webbrowser.open, "chrome://inspect/#remote-debugging")
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # ---------------------------------------------------------------- watchlist and digest
 
 @guard
@@ -686,6 +716,8 @@ app = Starlette(routes=[
     Route("/api/browser", set_browser, methods=["POST"]),
     Route("/api/key", set_key, methods=["POST"]),
     Route("/api/signin", signin_window, methods=["POST"]),
+    Route("/api/profile/sync", profile_sync_endpoint, methods=["POST"]),
+    Route("/api/browser/open_inspect", open_inspect_endpoint, methods=["POST"]),
     Route("/api/new", new_conversation, methods=["POST"]),
     Route("/api/library", library),
     Route("/api/watches", watches_action, methods=["POST"]),

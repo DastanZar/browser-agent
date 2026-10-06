@@ -160,7 +160,10 @@ _SIGNIN = None  # the plain Chrome window opened for signing in (no debugging po
 def _spawn(args):
     kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL, "stdin": subprocess.DEVNULL}
     if platform.system() == "Windows":
-        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        si = subprocess.STARTUPINFO()
+        si.lpDesktop = r"WinSta0\Default"
+        kwargs["startupinfo"] = si
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True  # keeps running after the dashboard exits
     return subprocess.Popen(args, **kwargs)
@@ -211,12 +214,88 @@ def open_signin_window(url=None):
     _SIGNIN = _spawn([*_base_args(), url or "about:blank"])
 
 
+def sync_user_profile(prefer_profile=None):
+    """Sync saved sessions (Local State, Cookies, Login Data, Preferences)
+    from the user's real Chrome profile to the dedicated agent profile (~/.agent-chrome).
+    Returns (success: bool, message: str).
+    """
+    src_user_data = default_chrome_dir()
+    if not src_user_data.exists():
+        return False, f"Chrome User Data directory not found at {src_user_data}"
+
+    AGENT_PROFILE.mkdir(parents=True, exist_ok=True)
+    dst_default = AGENT_PROFILE / "Default"
+    dst_default.mkdir(parents=True, exist_ok=True)
+
+    src_local_state = src_user_data / "Local State"
+    if src_local_state.exists():
+        try:
+            shutil.copy2(src_local_state, AGENT_PROFILE / "Local State")
+        except Exception as e:
+            return False, f"Failed to copy Local State: {e}"
+
+    candidates = []
+    names = [prefer_profile] if prefer_profile else ["Profile 2", "Default", "Profile 1", "Profile 3"]
+    for name in names:
+        if not name:
+            continue
+        pdir = src_user_data / name
+        cfile = pdir / "Network" / "Cookies"
+        if cfile.exists():
+            candidates.append((cfile.stat().st_size, pdir, name))
+
+    if not candidates:
+        return False, "No profile with saved cookies was found in Chrome User Data."
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    best_size, best_dir, best_name = candidates[0]
+
+    copied, locked = [], []
+    targets = [
+        ("Cookies", best_dir / "Network" / "Cookies", dst_default / "Network" / "Cookies"),
+        ("Login Data", best_dir / "Login Data", dst_default / "Login Data"),
+        ("Web Data", best_dir / "Web Data", dst_default / "Web Data"),
+        ("Preferences", best_dir / "Preferences", dst_default / "Preferences"),
+        ("Secure Preferences", best_dir / "Secure Preferences", dst_default / "Secure Preferences"),
+    ]
+
+    for label, src_f, dst_f in targets:
+        if src_f.exists():
+            dst_f.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                shutil.copy2(src_f, dst_f)
+                copied.append(label)
+            except (PermissionError, OSError):
+                locked.append(label)
+
+    if "Cookies" in locked and best_name != "Default":
+        default_cookies = src_user_data / "Default" / "Network" / "Cookies"
+        if default_cookies.exists():
+            try:
+                shutil.copy2(default_cookies, dst_default / "Network" / "Cookies")
+                copied.append("Cookies (Default)")
+                locked.remove("Cookies")
+            except Exception:
+                pass
+
+    if locked:
+        return False, f"Chrome has {best_name} open ({', '.join(locked)}). Close Chrome for 5s and click Sync again, or use 'My Chrome' mode."
+
+    return True, f"Successfully synced {len(copied)} login items ({', '.join(copied)}) from {best_name} into virtual agent browser."
+
+
 def open_agent_chrome(url=None):
     """Start the agent's own Chrome (persistent profile in ~/.agent-chrome) with its debugging port
     if it isn't running, optionally opening `url`. Logins made in this profile persist."""
     if not port_open(AGENT_PORT):
         if signin_open():  # one Chrome per profile, and it must close normally to keep the login
             raise RuntimeError("Close the sign-in Chrome window (its X button) so it saves your logins, then try again.")
+        # Auto-import logins if agent profile has no saved cookies yet
+        if not (AGENT_PROFILE / "Default" / "Network" / "Cookies").exists():
+            try:
+                sync_user_profile()
+            except Exception:
+                pass
         _spawn([*_base_args(), f"--remote-debugging-port={AGENT_PORT}", "--remote-debugging-address=127.0.0.1",
                 url or "about:blank"])
         for _ in range(60):
