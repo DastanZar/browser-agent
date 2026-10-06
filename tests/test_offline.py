@@ -130,6 +130,16 @@ def test_dashboard_rejects_foreign_host_and_cookie_only_api():
     assert dashboard.HOST == "127.0.0.1" or os.environ.get("DASHBOARD_HOST")  # local-only unless opted in
 
 
+def test_next_browser_falls_back_to_agent_window():
+    import dashboard
+    os.environ["CHROME_USER_DATA_DIR"] = tempfile.mkdtemp()  # no DevToolsActivePort: your Chrome isn't connected
+    dashboard.studio.browser, dashboard.studio.browser_mode = None, "auto"
+    assert dashboard.next_browser().startswith("agent browser")
+    dashboard.studio.browser_mode = "mine"
+    assert dashboard.next_browser().startswith("your Chrome")
+    dashboard.studio.browser_mode = "auto"
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

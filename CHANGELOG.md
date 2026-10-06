@@ -2,6 +2,22 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Claude Code · "Open agent browser" button; show which browser the next task uses
+
+- The owner asked for this: when they haven't chosen their own Chrome, tasks should open the agent browser (its
+  own profile with saved logins) by themselves.
+  - Auto mode already did that. It's now visible, and can be triggered:
+    - an **Open agent browser** button (`/api/browser/open_agent`);
+    - **"Next task runs in: …"** under the browser switch (`dashboard.next_browser()`, which starts nothing);
+    - clearer Auto wording.
+- Evidence: in a UI test, the line went from "agent browser (opens by itself)" to "agent Chrome window", the
+  agent Chrome answered on its port, and there were no JS errors. `python tests/test_offline.py`: 10/10
+  (new: `test_next_browser_falls_back_to_agent_window`).
+- **For the other agent:** please read `docs/reviews/2026-10-07-claude.md`. It covers concerns about profile
+  sync: Web Data / cards, the whole cookie jar in a debug-enabled profile, the silent first-launch import,
+  overwriting the agent's cookies and key, and that `lpDesktop` is a no-op. I didn't change that code (my
+  environment blocks me from working on credential-reading code), so the owner decides.
+
 ## 2026-10-06 · Antigravity · Add profile sync from Chrome, inspect helper, and fix Windows desktop visibility
 
 - Windows desktop isolation fix: spawned Chrome processes explicitly target `WinSta0\Default` so sign-in and automation windows render visibly on the user's interactive monitor instead of being hidden in sandbox desktops (`core._spawn`).

@@ -396,7 +396,7 @@ async def state(request: Request):
         "models": core.CONFIG["models"], "default": core.CONFIG["default"], "fallback": core.CONFIG["fallback"],
         "key_set": bool(core.api_key()),
         "notion": notion_sync.get_public_status(),
-        "browser": {"mode": studio.browser_mode, "where": studio.browser_where},
+        "browser": {"mode": studio.browser_mode, "where": studio.browser_where, "next": next_browser()},
         "current": cur.public() if cur else None,
         "paused": bool(studio.agent and getattr(studio.agent.state, "paused", False)),
         "conversation": {"active": studio.convo is not None, "model": studio.convo_model, "turns": studio.convo_turns},
@@ -536,6 +536,43 @@ async def profile_sync_endpoint(request: Request):
         return JSONResponse({"ok": ok, "message": msg})
     except Exception as e:
         return JSONResponse({"ok": False, "message": str(e)}, status_code=500)
+
+
+def _my_chrome_reachable():
+    """True if your everyday Chrome has remote debugging on (chrome://inspect) and is listening."""
+    port_file = Path(os.environ.get("CHROME_USER_DATA_DIR") or core.default_chrome_dir()) / "DevToolsActivePort"
+    try:
+        return core.port_open(int(port_file.read_text().split()[0]))
+    except (OSError, ValueError, IndexError):
+        return False
+
+
+def next_browser():
+    """Which browser the next task will use, without starting anything."""
+    if studio.browser is not None:
+        return studio.browser_where
+    if studio.browser_mode == "mine" or (studio.browser_mode == "auto" and _my_chrome_reachable()):
+        return "your Chrome (existing tabs)"
+    if studio.browser_mode in ("auto", "agent"):
+        return "agent browser (opens by itself)"
+    return f"custom endpoint {studio.browser_mode}"
+
+
+@guard
+async def open_agent_browser_endpoint(request: Request):
+    """Open the agent browser now, with its saved logins (it also opens by itself when a task needs it)."""
+    if studio.current:
+        return JSONResponse({"error": "wait for the current task to finish"}, status_code=409)
+    if core.signin_open():
+        return JSONResponse({"error": "close the sign-in window first (its X button), so it saves your logins"},
+                            status_code=409)
+    try:
+        await studio.drop_browser()
+        studio.browser_mode = "agent"
+        await studio.ensure_browser()
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return JSONResponse({"ok": True, "where": studio.browser_where})
 
 
 @guard
@@ -718,6 +755,7 @@ app = Starlette(routes=[
     Route("/api/signin", signin_window, methods=["POST"]),
     Route("/api/profile/sync", profile_sync_endpoint, methods=["POST"]),
     Route("/api/browser/open_inspect", open_inspect_endpoint, methods=["POST"]),
+    Route("/api/browser/open_agent", open_agent_browser_endpoint, methods=["POST"]),
     Route("/api/new", new_conversation, methods=["POST"]),
     Route("/api/library", library),
     Route("/api/watches", watches_action, methods=["POST"]),
