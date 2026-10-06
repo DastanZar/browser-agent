@@ -29,6 +29,7 @@ import socket
 
 import core
 import digest
+import notion_sync
 
 HOST = os.environ.get("DASHBOARD_HOST", "0.0.0.0")
 PORT = int(os.environ.get("DASHBOARD_PORT", "8770"))
@@ -58,10 +59,11 @@ class Run:
         self.status, self.steps, self.result, self.ok = "queued", [], None, None
         self.started = self.ended = None
         self.prompt, self.future, self.shot = None, None, None
+        self.notion_page_id = None
 
     def public(self, full=True):
         d = {k: getattr(self, k) for k in ("id", "kind", "task", "model", "fallback", "follow_up", "fast", "status", "result", "ok",
-                                           "started", "ended")}
+                                           "started", "ended", "notion_page_id")}
         if full:
             d.update(steps=self.steps[-200:], prompt=self.prompt, has_shot=self.shot is not None)
         return d
@@ -131,6 +133,8 @@ class Studio:
         run.prompt = {"id": secrets.token_hex(4), "kind": kind, "text": text, "since": time.time()}
         run.status = "waiting"
         notify_phone(text)
+        if getattr(run, "notion_page_id", None):
+            asyncio.create_task(asyncio.to_thread(notion_sync.update_task_card_status, run.notion_page_id, "Needs Human"))
         try:
             if run.kind == "digest":  # nobody may be watching: don't wait forever
                 try:
@@ -143,6 +147,8 @@ class Studio:
             run.prompt, run.future = None, None
             if run.status == "waiting":
                 run.status = "running"
+                if getattr(run, "notion_page_id", None):
+                    asyncio.create_task(asyncio.to_thread(notion_sync.update_task_card_status, run.notion_page_id, "In Progress"))
 
     def on_step(self, state, output, n):
         run = self.current
@@ -174,6 +180,11 @@ class Studio:
             if run.kind == "digest":  # read one page at a time, at a human pace
                 await asyncio.sleep(max(0.0, self.last_digest_end + DIGEST_GAP - time.time()))
             self.current, run.status, run.started = run, "running", time.time()
+            if notion_sync.load_config().get("auto_sync") and notion_sync.load_config().get("token") and not getattr(run, "notion_page_id", None):
+                try:
+                    run.notion_page_id = await asyncio.to_thread(notion_sync.create_task_card, run)
+                except Exception as e:
+                    print(f"Notion card create error: {e}")
             try:
                 await self.ensure_browser()
                 if run.kind == "digest":
@@ -206,6 +217,11 @@ class Studio:
                 if "connect" in str(e).lower() or "websocket" in str(e).lower():
                     await self.drop_browser()  # reconnect on the next task
             finally:
+                if getattr(run, "notion_page_id", None):
+                    try:
+                        await asyncio.to_thread(notion_sync.finalize_task_card, run.notion_page_id, run)
+                    except Exception as e:
+                        print(f"Notion finalize error: {e}")
                 run.ended, self.agent, self.current = time.time(), None, None
                 if run.kind == "digest":
                     self.last_digest_end = run.ended
@@ -221,6 +237,11 @@ class Studio:
 
     async def run_digest(self, run):
         watch = run.watch
+        if notion_sync.load_config().get("auto_sync") and notion_sync.load_config().get("token") and not getattr(run, "notion_page_id", None):
+            try:
+                run.notion_page_id = await asyncio.to_thread(notion_sync.create_task_card, run)
+            except Exception as e:
+                pass
         seen_text = []  # what was really on the page, captured by us at every step
         saved = []      # posts the agent saves one by one with save_post
 
@@ -342,6 +363,7 @@ async def state(request: Request):
     return JSONResponse({
         "models": core.CONFIG["models"], "default": core.CONFIG["default"], "fallback": core.CONFIG["fallback"],
         "key_set": bool(core.api_key()),
+        "notion": notion_sync.get_public_status(),
         "browser": {"mode": studio.browser_mode, "where": studio.browser_where},
         "current": cur.public() if cur else None,
         "paused": bool(studio.agent and getattr(studio.agent.state, "paused", False)),
@@ -507,6 +529,85 @@ async def shot(request: Request):
     return Response(data, media_type=kind, headers={"Cache-Control": "no-store"})
 
 
+# ---------------------------------------------------------------- notion integration
+
+@guard
+async def notion_config(request: Request):
+    body = await request.json()
+    token = body.get("token")
+    database_id = body.get("database_id")
+    auto_sync = body.get("auto_sync")
+    try:
+        cfg = notion_sync.save_config(token=token, database_id=database_id, auto_sync=auto_sync)
+        test_info = None
+        if cfg.get("token"):
+            test_info = await asyncio.to_thread(notion_sync.test_connection, cfg.get("token"), cfg.get("database_id"))
+        return JSONResponse({"ok": True, "test": test_info, "status": notion_sync.get_public_status()})
+    except Exception as e:
+        return JSONResponse({"error": str(e), "status": notion_sync.get_public_status()}, status_code=400)
+
+
+@guard
+async def notion_setup(request: Request):
+    body = await request.json()
+    parent_id = body.get("parent_id") or ""
+    title = body.get("title") or "Browser Agent Operations Kanban"
+    if not parent_id:
+        return JSONResponse({"error": "Parent Page ID or URL is required to auto-create a Notion Kanban board."}, status_code=400)
+    try:
+        res = await asyncio.to_thread(notion_sync.create_kanban_database, parent_id, title)
+        return JSONResponse({"ok": True, "database": res, "status": notion_sync.get_public_status()})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@guard
+async def notion_sync_run(request: Request):
+    body = await request.json()
+    run_id = body.get("id")
+    if not run_id:
+        return JSONResponse({"error": "Task run ID is required."}, status_code=400)
+
+    target_run = None
+    for r in studio.runs:
+        if r.id == run_id:
+            target_run = r
+            break
+
+    if not target_run:
+        for h in studio.history:
+            if h.get("id") == run_id:
+                class HistRun:
+                    pass
+                target_run = HistRun()
+                for k, v in h.items():
+                    setattr(target_run, k, v)
+                if not hasattr(target_run, "steps"):
+                    target_run.steps = []
+                if not hasattr(target_run, "notion_page_id"):
+                    target_run.notion_page_id = None
+                break
+
+    if not target_run:
+        return JSONResponse({"error": "Task run not found."}, status_code=404)
+
+    try:
+        page_id = getattr(target_run, "notion_page_id", None)
+        if not page_id:
+            page_id = await asyncio.to_thread(notion_sync.create_task_card, target_run)
+            target_run.notion_page_id = page_id
+        if page_id:
+            await asyncio.to_thread(notion_sync.finalize_task_card, page_id, target_run)
+            # Update history cache if found
+            for h in studio.history:
+                if h.get("id") == run_id:
+                    h["notion_page_id"] = page_id
+            return JSONResponse({"ok": True, "page_id": page_id})
+        return JSONResponse({"error": "Failed to create or find Notion card."}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app):
     worker = asyncio.get_running_loop().create_task(studio.worker())
@@ -542,6 +643,9 @@ app = Starlette(routes=[
     Route("/api/library", library),
     Route("/api/watches", watches_action, methods=["POST"]),
     Route("/api/shot", shot),
+    Route("/api/notion/config", notion_config, methods=["POST"]),
+    Route("/api/notion/setup", notion_setup, methods=["POST"]),
+    Route("/api/notion/sync", notion_sync_run, methods=["POST"]),
 ], lifespan=lifespan)
 
 def _open_when_ready(url):

@@ -3,9 +3,10 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![UI: Bento Box SaaS](https://img.shields.io/badge/UI-Bento%20Box%20SaaS-indigo.svg)](#operations-console-preview)
+[![Notion: Live Kanban Database](https://img.shields.io/badge/Notion-Live%20Kanban%20Database-black.svg)](#notion-kanban-database-integration)
 [![Engine: CDP + Browser-Use](https://img.shields.io/badge/Engine-CDP%20%2B%20Browser--Use-orange.svg)](#key-capabilities)
 
-An autonomous web operations suite with a developer-grade Bento Box console. Execute complex browser tasks across authenticated web applications (LinkedIn, Google Cloud, AWS, GitHub), maintain persistent sessions safely, monitor feeds with zero-hallucination verification, and access your agent securely from your workstation, LAN, or mobile device.
+An autonomous web operations suite with a developer-grade Bento Box console. Execute complex browser tasks across authenticated web applications (LinkedIn, Google Cloud, AWS, GitHub), maintain persistent sessions safely, monitor feeds with zero-hallucination verification, sync task execution logs & extracted data to a self-updating Notion Kanban database, and access your agent securely from your workstation, LAN, or mobile device.
 
 ---
 
@@ -16,12 +17,17 @@ The primary interface provides 1-click starter prompts, workflow templates, infe
 
 ![Operations Console Overview](docs/images/dashboard-overview.png)
 
-### 2. Personal Intelligence Digest & Watchlist
+### 2. Notion Kanban Database & Live Step Streaming
+Connect an existing Notion database or auto-provision a new Kanban board with 1 click. Tasks, real-time status transitions (`Queued` → `In Progress` → `Needs Human` → `Completed`), chronological CDP steps, and fetched content are automatically populated into Notion.
+
+![Notion Kanban Integration](docs/images/notion-kanban-board.png)
+
+### 3. Personal Intelligence Digest & Watchlist
 Read-only, human-paced feed scrolling with DeepSeek v4.1 Flash. The agent deduplicates posts via SHA-1 fingerprints, reads post links in background CDP tabs, and verifies extracted summaries against verbatim DOM body text.
 
 ![Personal Intelligence Digest](docs/images/social-digest.png)
 
-### 3. Execution History & Interactive Summaries
+### 4. Execution History & Interactive Summaries
 Persistent turn history with real-time state caching, status chips (`DONE`, `FAILED`, `STOPPED`), timing metrics, and non-jittery expandable execution summaries.
 
 ![Execution History and Summary](docs/images/execution-summary.png)
@@ -60,6 +66,24 @@ Persistent turn history with real-time state caching, status chips (`DONE`, `FAI
 - **Zero-Config Localhost**: Workstation browser connects directly without security prompts.
 - **Secure Network Access**: Connections across LAN / WiFi / Tailscale require the per-session token (`?token=...`). Unauthorized probes receive **HTTP 403 Forbidden**.
 - Direct LAN URL with security token is printed in the terminal on startup.
+
+### 📋 6. Notion Kanban Database & Live Step Streaming
+<a id="notion-kanban-database-integration"></a>
+- **5-Column Visual Workflow**:
+  - `Queued`: Dispatched tasks awaiting execution.
+  - `In Progress`: Active tasks navigating and executing in the browser.
+  - `Needs Human`: Automatically moved here during 2FA, CAPTCHA, or confirmation pauses. Returns to `In Progress` when the operator responds.
+  - `Completed`: Successfully finalized tasks.
+  - `Failed`: Tasks that timed out or encountered unrecoverable CDP errors.
+- **Rich Card Properties**: Automatically sets `Task` (title), `Status`, `Model`, `Category` (`Autonomous Task` vs `Social Digest`), `Duration (s)`, `Steps Count`, `Target URL`, and `Execution Date`.
+- **Structured Card Content**:
+  - **Executive Summary Callout**: Color-coded callout block summarizing outcomes.
+  - **Task Instruction Quote**: Verbatim prompt preserved for auditing.
+  - **Fetched & Extracted Content**: Complete body text, extracted summaries, or structured inventory.
+  - **Execution Steps Breakdown**: Expandable chronological log of all CDP actions (click, type, scroll, navigate) and visited URLs.
+- **1-Click Auto-Provisioning**: Enter any Notion parent page ID/URL and the agent constructs the full Kanban database schema via Notion REST API.
+- **Historical Back-Sync**: Any past run in the Execution History can be synchronized to Notion with 1 click.
+- **Zero Extra Dependencies**: Uses Python's native `urllib.request` against Notion REST API `v1` (`2022-06-28`). Zero bloat.
 
 ---
 
@@ -131,6 +155,9 @@ The suite pauses and notifies the operator only when human agency is essential:
 | `/api/library` | GET | Header `X-Token` | Fetches watchlist targets, scheduler settings, and recent digest logs |
 | `/api/watches` | POST | `{ action: "add"|"toggle"|"remove"|"schedule"|"run", ... }` | Manages social digest targets and triggers on-demand runs |
 | `/api/new` | POST | `{}` | Resets multi-turn conversational context |
+| `/api/notion/config` | POST | `{ token?, database_id?, auto_sync? }` | Tests and saves Notion API integration token and target database |
+| `/api/notion/setup` | POST | `{ parent_id, title? }` | Auto-provisions a new 5-column Kanban database schema under a parent page |
+| `/api/notion/sync` | POST | `{ id }` | Manually synchronizes an existing execution run and steps to Notion |
 
 ---
 

@@ -786,6 +786,7 @@ details[open] summary::before {
     <span class="telemetry-chip"><span class="pulse-dot"></span><span>v2.6 Bento</span></span>
     <span id="browserPill" class="telemetry-chip"><span class="pulse-dot"></span><span>target: …</span></span>
     <span id="keyPill" class="telemetry-chip"><span class="pulse-dot"></span><span>key: …</span></span>
+    <span id="notionHeaderPill" class="telemetry-chip"><span class="pulse-dot"></span><span>notion: …</span></span>
   </div>
   
   <span class="spacer"></span>
@@ -899,6 +900,66 @@ details[open] summary::before {
       </div>
       <p class="muted">Stored locally in <code>~/.config/bai/key</code>.</p>
       <div class="err" id="keyErr"></div>
+    </div>
+
+    <!-- Notion Kanban Integration -->
+    <div class="bento-card">
+      <div class="card-title">
+        <h2>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+            <path d="M7 7h3v10H7zM14 7h3v6h-3z"/>
+          </svg>
+          Notion Kanban Database
+        </h2>
+        <span id="notionPill" class="telemetry-chip">notion: offline</span>
+      </div>
+      
+      <p class="muted" style="margin-top:-6px; margin-bottom:12px;">Automated sync of browser tasks, chronological CDP steps, and fetched data to a live Kanban board.</p>
+
+      <label for="notionToken">Notion Integration Secret (Token)</label>
+      <div class="row">
+        <input id="notionToken" type="password" placeholder="secret_..." autocomplete="off">
+        <button id="notionSaveTokenBtn">Save Token</button>
+      </div>
+      <p class="muted">Obtain internal secret from <a href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener noreferrer" style="color:var(--brand-600);text-decoration:none;">notion.so/profile/integrations ↗</a></p>
+
+      <div style="border-top: 1px solid var(--border-subtle); margin: 14px 0 12px;"></div>
+
+      <label for="notionDbId">Connected Kanban Database ID or URL</label>
+      <div class="row">
+        <input id="notionDbId" placeholder="Database ID (32 chars) or Notion database URL">
+        <button id="notionConnectDbBtn">Connect</button>
+      </div>
+
+      <div style="margin-top:10px;">
+        <a id="notionOpenBoardBtn" href="#" target="_blank" rel="noopener noreferrer" style="display:none; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--brand-600); text-decoration:none; background:var(--brand-50); border:1px solid var(--brand-100); padding:7px 12px; border-radius:var(--radius-md); width:fit-content;">
+          <span>Open Notion Kanban Board</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      <details style="margin-top:12px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:10px 12px; background:var(--panel-subtle);">
+        <summary style="font-weight:600; color:var(--text-secondary); font-size:12px; cursor:pointer;">Auto-Provision New Kanban Database</summary>
+        <div style="margin-top:10px;">
+          <label for="notionParentId" style="font-size:11.5px;">Parent Page ID or URL (Must be shared with integration)</label>
+          <div class="row">
+            <input id="notionParentId" placeholder="Notion Parent Page ID or URL">
+            <button id="notionSetupBtn" class="primary" style="white-space:nowrap;">Create Board</button>
+          </div>
+          <p class="muted" style="margin-top:4px;">Provisions Kanban columns: <b>Queued</b>, <b>In Progress</b>, <b>Needs Human</b>, <b>Completed</b>, and <b>Failed</b>.</p>
+        </div>
+      </details>
+
+      <div class="mode-toggles" style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--panel-subtle); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+        <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
+          <input type="checkbox" id="notionAutoSync" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
+          <span><b>Auto-sync</b>: stream tasks, step logs &amp; fetched text to Notion</span>
+        </label>
+      </div>
+
+      <div class="err" id="notionErr"></div>
+      <div id="notionSuccess" style="font-size:12px; font-weight:500; color:var(--status-emerald-text); margin-top:8px; display:none;"></div>
     </div>
   </div>
 
@@ -1111,7 +1172,7 @@ async function sendAnswer(pid, preset) {
 }
 
 function renderList(el, rows, empty, withCancel) {
-  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result]));
+  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id]));
   if (el.dataset.lastKey === key) return;
 
   const openIds = new Set();
@@ -1124,11 +1185,22 @@ function renderList(el, rows, empty, withCancel) {
   el.innerHTML = rows.length ? rows.map((r) => `<li data-id="${r.id}" data-task="${esc(r.task)}">
     <div class="t">${esc(r.task)}</div>
     <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
-    ${withCancel ? ` &bull; <a href="#" data-cancel="${r.id}" style="color:var(--status-rose-text);font-weight:600;text-decoration:none">Cancel</a>` : ""}</div>
+    ${withCancel ? ` &bull; <a href="#" data-cancel="${r.id}" style="color:var(--status-rose-text);font-weight:600;text-decoration:none">Cancel</a>` : (r.notion_page_id ? ` &bull; <span style="color:var(--brand-600);font-weight:600;font-size:11px;">Synced to Notion</span>` : ` &bull; <a href="#" data-sync="${r.id}" style="color:var(--brand-600);font-weight:600;text-decoration:none;font-size:11px;">Sync to Notion</a>`)}</div>
     ${r.result ? `<details ${openIds.has(String(r.id)) ? 'open' : ''}><summary>View Execution Summary</summary><div class="result">${esc(r.result)}</div></details>` : ""}</li>`).join("")
     : `<li class="muted" style="cursor:default;padding:16px 0;text-align:center">${empty}</li>`;
   el.querySelectorAll("li[data-task] .t").forEach((t) => t.onclick = () => { $("task").value = t.parentElement.dataset.task; $("task").focus(); });
   el.querySelectorAll("[data-cancel]").forEach((a) => a.onclick = async (e) => { e.preventDefault(); await api("/api/control", { action: "cancel", id: +a.dataset.cancel }); refresh(); });
+  el.querySelectorAll("[data-sync]").forEach((a) => a.onclick = async (e) => {
+    e.preventDefault();
+    a.textContent = "Syncing...";
+    try {
+      await api("/api/notion/sync", { id: +a.dataset.sync });
+      refresh();
+    } catch (err) {
+      alert("Notion sync failed: " + err.message);
+      refresh();
+    }
+  });
 }
 
 async function refresh() {
@@ -1139,6 +1211,32 @@ async function refresh() {
   $("browserPill").classList.toggle("on", isConn);
   $("keyPill").innerHTML = `<span class="pulse-dot"></span><span>key: ${S.key_set ? "configured" : "missing"}</span>`;
   $("keyPill").classList.toggle("on", S.key_set);
+
+  const n = S.notion || {};
+  const nOk = n.configured;
+  if ($("notionHeaderPill")) {
+    $("notionHeaderPill").innerHTML = `<span class="pulse-dot ${nOk ? 'breathing' : ''}"></span><span>notion: ${nOk ? 'connected' : (n.has_token ? 'no db' : 'offline')}</span>`;
+    $("notionHeaderPill").classList.toggle("on", nOk);
+  }
+  if ($("notionPill")) {
+    $("notionPill").innerHTML = `<span class="pulse-dot ${nOk ? 'breathing' : ''}"></span><span>${nOk ? 'connected' : (n.has_token ? 'db needed' : 'unconfigured')}</span>`;
+    $("notionPill").classList.toggle("on", nOk);
+  }
+  if ($("notionOpenBoardBtn")) {
+    if (n.database_url) {
+      $("notionOpenBoardBtn").href = n.database_url;
+      $("notionOpenBoardBtn").style.display = "inline-flex";
+    } else {
+      $("notionOpenBoardBtn").style.display = "none";
+    }
+  }
+  if ($("notionAutoSync") && document.activeElement !== $("notionAutoSync")) {
+    $("notionAutoSync").checked = Boolean(n.auto_sync);
+  }
+  if ($("notionDbId") && document.activeElement !== $("notionDbId") && !$("notionDbId").value) {
+    if (n.database_id) $("notionDbId").value = n.database_id;
+  }
+
   const c = S.current;
   const pid = c && c.prompt ? c.prompt.id : null;
   if (pid && pid !== lastPromptId) attention(c.prompt);
@@ -1212,6 +1310,60 @@ $("keyBtn").onclick = async () => {
   $("keyErr").textContent = "";
   try { await api("/api/key", { key: $("key").value }); $("key").value = ""; refresh(); }
   catch (e) { $("keyErr").textContent = e.message; }
+};
+
+$("notionSaveTokenBtn").onclick = async () => {
+  $("notionErr").textContent = "";
+  $("notionSuccess").style.display = "none";
+  const token = $("notionToken").value.trim();
+  if (!token) { $("notionErr").textContent = "Please enter your Notion Integration Secret (token)."; return; }
+  try {
+    const res = await api("/api/notion/config", { token, database_id: $("notionDbId").value.trim() });
+    $("notionToken").value = "";
+    $("notionSuccess").textContent = "Token saved successfully" + (res.test && res.test.bot_name ? ` (Integration: ${res.test.bot_name})` : "") + ".";
+    $("notionSuccess").style.display = "block";
+    refresh();
+  } catch (e) { $("notionErr").textContent = e.message; }
+};
+
+$("notionConnectDbBtn").onclick = async () => {
+  $("notionErr").textContent = "";
+  $("notionSuccess").style.display = "none";
+  const dbId = $("notionDbId").value.trim();
+  if (!dbId) { $("notionErr").textContent = "Please enter a Database ID or URL."; return; }
+  try {
+    const res = await api("/api/notion/config", { database_id: dbId });
+    $("notionSuccess").textContent = "Connected to database" + (res.test && res.test.database_title ? `: "${res.test.database_title}"` : "") + ".";
+    $("notionSuccess").style.display = "block";
+    refresh();
+  } catch (e) { $("notionErr").textContent = e.message; }
+};
+
+$("notionSetupBtn").onclick = async () => {
+  $("notionErr").textContent = "";
+  $("notionSuccess").style.display = "none";
+  const parentId = $("notionParentId").value.trim();
+  if (!parentId) { $("notionErr").textContent = "Please enter the Parent Page ID or URL."; return; }
+  $("notionSetupBtn").disabled = true;
+  $("notionSetupBtn").textContent = "Creating...";
+  try {
+    const res = await api("/api/notion/setup", { parent_id: parentId });
+    $("notionDbId").value = res.database.database_id;
+    $("notionSuccess").textContent = `Kanban database "${res.database.title}" created successfully!`;
+    $("notionSuccess").style.display = "block";
+    refresh();
+  } catch (e) { $("notionErr").textContent = e.message; }
+  finally {
+    $("notionSetupBtn").disabled = false;
+    $("notionSetupBtn").textContent = "Create Board";
+  }
+};
+
+$("notionAutoSync").onchange = async () => {
+  try {
+    await api("/api/notion/config", { auto_sync: $("notionAutoSync").checked });
+    refresh();
+  } catch (e) { $("notionErr").textContent = e.message; }
 };
 
 let L = null, libKey = "";
