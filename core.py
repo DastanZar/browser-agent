@@ -109,7 +109,7 @@ def start_url(task):
     m = _URL.search(task or "")
     if not m:
         return None
-    url = m.group(1).rstrip(".,;:!?")
+    url = m.group(1).rstrip(".,;:!?*_)]'\"")
     return url if url.lower().startswith(("http://", "https://")) else "https://" + url
 
 
@@ -127,7 +127,7 @@ def default_chrome_dir():
     return Path(os.environ.get("CHROME_CONFIG_HOME") or Path.home() / ".config") / "google-chrome"
 
 
-AGENT_PORT = int(os.environ.get("AGENT_PORT", "9222"))
+AGENT_PORT = int(os.environ.get("AGENT_PORT", "9223"))
 AGENT_PROFILE = Path(os.environ.get("AGENT_PROFILE") or Path.home() / ".agent-chrome")
 
 
@@ -158,14 +158,70 @@ _SIGNIN = None  # the plain Chrome window opened for signing in (no debugging po
 
 
 def _spawn(args):
-    kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL, "stdin": subprocess.DEVNULL}
     if platform.system() == "Windows":
-        si = subprocess.STARTUPINFO()
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.windll.kernel32
+
+        class STARTUPINFOW(ctypes.Structure):
+            _fields_ = [
+                ('cb', wintypes.DWORD),
+                ('lpReserved', wintypes.LPWSTR),
+                ('lpDesktop', wintypes.LPWSTR),
+                ('lpTitle', wintypes.LPWSTR),
+                ('dwX', wintypes.DWORD),
+                ('dwY', wintypes.DWORD),
+                ('dwXSize', wintypes.DWORD),
+                ('dwYSize', wintypes.DWORD),
+                ('dwXCountChars', wintypes.DWORD),
+                ('dwYCountChars', wintypes.DWORD),
+                ('dwFillAttribute', wintypes.DWORD),
+                ('dwFlags', wintypes.DWORD),
+                ('wShowWindow', wintypes.WORD),
+                ('cbReserved2', wintypes.WORD),
+                ('lpReserved2', ctypes.c_char_p),
+                ('hStdInput', wintypes.HANDLE),
+                ('hStdOutput', wintypes.HANDLE),
+                ('hStdError', wintypes.HANDLE),
+            ]
+
+        class PROCESS_INFORMATION(ctypes.Structure):
+            _fields_ = [
+                ('hProcess', wintypes.HANDLE),
+                ('hThread', wintypes.HANDLE),
+                ('dwProcessId', wintypes.DWORD),
+                ('dwThreadId', wintypes.DWORD),
+            ]
+
+        si = STARTUPINFOW()
+        si.cb = ctypes.sizeof(STARTUPINFOW)
         si.lpDesktop = r"WinSta0\Default"
-        kwargs["startupinfo"] = si
-        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-    else:
-        kwargs["start_new_session"] = True  # keeps running after the dashboard exits
+
+        pi = PROCESS_INFORMATION()
+        cmd = subprocess.list2cmdline(args)
+        CREATE_NEW_PROCESS_GROUP = 0x00000200
+        ok = kernel32.CreateProcessW(None, cmd, None, None, False, CREATE_NEW_PROCESS_GROUP, None, None, ctypes.byref(si), ctypes.byref(pi))
+        if ok:
+            class WinProcess:
+                def __init__(self, hProcess, pid):
+                    self._h = hProcess
+                    self.pid = pid
+                def poll(self):
+                    exit_code = wintypes.DWORD()
+                    if kernel32.GetExitCodeProcess(self._h, ctypes.byref(exit_code)):
+                        if exit_code.value == 259:  # STILL_ACTIVE
+                            return None
+                        return exit_code.value
+                    return 0
+                def terminate(self):
+                    kernel32.TerminateProcess(self._h, 1)
+
+            kernel32.CloseHandle(pi.hThread)
+            return WinProcess(pi.hProcess, pi.dwProcessId)
+
+    kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL, "stdin": subprocess.DEVNULL}
+    if platform.system() != "Windows":
+        kwargs["start_new_session"] = True
     return subprocess.Popen(args, **kwargs)
 
 

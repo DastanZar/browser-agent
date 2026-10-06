@@ -71,7 +71,7 @@ def extract_target_url(task: str) -> str | None:
     # 1. Look for explicit http/https URLs
     m_url = re.search(r'https?://[^\s<>"\')]+', text)
     if m_url:
-        return m_url.group(0).rstrip('.,;:')
+        return m_url.group(0).rstrip('.,;:!?*_)]\'"')
 
     # 2. Look for explicit domain patterns like 'something.com/path' or 'sub.domain.org'
     m_domain = re.search(r'\b([a-zA-Z0-9-]+\.(?:com|org|io|net|dev|ai|gov|edu)(?:/[^\s<>"\')]+)?)\b', text, re.IGNORECASE)

@@ -2,6 +2,14 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Antigravity · Fix Windows desktop visibility via Win32 CreateProcessW and separate AGENT_PORT to 9223
+
+- Windows desktop visibility fix: CPython's `subprocess.STARTUPINFO` ignores `lpDesktop`; implemented `CreateProcessW` directly via `ctypes` with `lpDesktop = "WinSta0\\Default"` so spawned Chrome windows render on the user's interactive display instead of the background task runner's hidden desktop.
+- Port separation: moved `AGENT_PORT` from 9222 to 9223 so the virtual browser and the user's live Chrome (9222) never collide or falsely detect each other.
+- URL sanitization: stripped trailing markdown formatting (`*`, `_`, `)`) in `start_url` and `extract_target_url`.
+- Evidence: `python tests/test_offline.py` all 10 tests pass cleanly; verified `open_agent_chrome()` spawns and binds port 9223.
+- For the other agent: `AGENT_PORT` defaults to 9223 now; `_spawn` uses Win32 `CreateProcessW` on Windows.
+
 ## 2026-10-07 · Antigravity · Simplify browser selection to pop-up modal and strip dashboard clutter
 
 - Simplified browser UX: removed manual "Inspect", "Sync Logins", and sign-in window buttons and clutter from dashboard.
