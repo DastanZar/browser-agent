@@ -58,6 +58,11 @@ def save_config(token: str = None, database_id: str = None, auto_sync: bool = No
         cfg["database_url"] = database_url
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    try:  # the file holds the Notion token: readable by you only (no-op on Windows)
+        os.chmod(CONFIG_DIR, 0o700)
+        os.chmod(CONFIG_FILE, 0o600)
+    except OSError:
+        pass
     return cfg
 
 

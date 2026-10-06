@@ -32,7 +32,9 @@ import digest
 import notion_sync
 import turbo
 
-HOST = os.environ.get("DASHBOARD_HOST", "0.0.0.0")
+# Local-only by default. LAN access (e.g. from a phone) is opt-in: DASHBOARD_HOST=0.0.0.0.
+HOST = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
+LAN = HOST not in ("127.0.0.1", "localhost", "::1")
 PORT = int(os.environ.get("DASHBOARD_PORT", "8770"))
 TOKEN = os.environ.get("DASHBOARD_TOKEN") or secrets.token_urlsafe(24)
 
@@ -321,8 +323,26 @@ studio = Studio()
 
 # ---------------------------------------------------------------- HTTP
 
-def is_valid_token(request: Request):
-    token = request.headers.get("x-token") or request.query_params.get("token") or request.cookies.get("agy_token")
+def allowed_hosts():
+    """Host headers we answer to. Checking it blocks DNS rebinding: a website pointing its own domain at
+    127.0.0.1 would otherwise get the page, and the token inside it, as a "local" request."""
+    names = {"127.0.0.1", "localhost", "[::1]"}
+    if LAN:
+        names |= {get_lan_ip(), socket.gethostname(), socket.gethostname() + ".local"}
+    names |= {h.strip() for h in os.environ.get("DASHBOARD_ALLOWED_HOSTS", "").split(",") if h.strip()}
+    return {f"{n}:{PORT}".lower() for n in names}
+
+
+def host_ok(request: Request):
+    return request.headers.get("host", "").lower() in allowed_hosts()
+
+
+def is_valid_token(request: Request, allow_cookie=False):
+    """API calls must carry X-Token (or ?token for <img> URLs). The cookie is accepted only for loading
+    the page itself: a cookie rides along on requests from other sites, a custom header can't."""
+    token = request.headers.get("x-token") or request.query_params.get("token")
+    if not token and allow_cookie:
+        token = request.cookies.get("agy_token")
     return bool(token and secrets.compare_digest(token, TOKEN))
 
 
@@ -333,6 +353,8 @@ def is_local_request(request: Request):
 
 def guard(handler):
     async def wrapped(request: Request):
+        if not host_ok(request):
+            return Response("bad host", status_code=403)
         if not is_valid_token(request):
             return Response("bad token", status_code=403)
         return await handler(request)
@@ -340,15 +362,18 @@ def guard(handler):
 
 
 async def page(request: Request):
+    if not host_ok(request):
+        return Response("bad host", status_code=403)
     # Allow local connections directly; for LAN/external connections, require valid token
-    if not is_local_request(request) and not is_valid_token(request):
+    if not is_local_request(request) and not is_valid_token(request, allow_cookie=True):
         token_hint = request.query_params.get("token")
         if not token_hint:
             return Response("Access denied: missing token for network access. Append ?token=<YOUR_TOKEN> to the URL.", status_code=403)
         return Response("Access denied: invalid security token.", status_code=403)
     html = (core.HERE / "dashboard.html").read_text(encoding="utf-8").replace("__TOKEN__", TOKEN)
     response = HTMLResponse(html, headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"})
-    response.set_cookie("agy_token", TOKEN, httponly=True, samesite="lax")
+    if LAN:  # lets a phone reload the page after opening the ?token= link once
+        response.set_cookie("agy_token", TOKEN, httponly=True, samesite="strict")
     return response
 
 
@@ -638,9 +663,9 @@ async def lifespan(app):
     print("\n" + "=" * 60)
     print(f"  Browser Automation Suite (Port {PORT})")
     print(f"  Local Dashboard:    {local_url}")
-    if HOST == "0.0.0.0" or lan_ip != "127.0.0.1":
-        print(f"  LAN/Remote Access:  http://{lan_ip}:{PORT}/?token={TOKEN}")
-    print(f"  Security Token:     {TOKEN}")
+    if LAN:
+        print(f"  LAN Access:         http://{lan_ip}:{PORT}/?token={TOKEN}")
+        print("  (Network access is ON: anyone with this link on your network can drive your browser.)")
     print("=" * 60 + "\n")
     if os.environ.get("NO_OPEN") != "1":
         # Open the page only once the server is actually listening (lifespan runs before the bind).

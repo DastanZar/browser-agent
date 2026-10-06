@@ -8,7 +8,7 @@
   "digest_model": "deepseek-v4.1-flash",
   "digest_fallback": "qwen3.8-flash",
   "models": [
-    {"id": "mimo-v2.6-pro",       "label": "MiMo v2.6 Pro",       "json_mode": true,  "vision": true, "note": "strongest of the five; default"},
+    {"id": "mimo-v2.6-pro",       "label": "MiMo v2.6 Pro",       "json_mode": true,  "vision": true, "timeout": 60, "note": "strongest of the five; default"},
     {"id": "deepseek-v4.1-flash", "label": "DeepSeek v4.1 Flash", "json_mode": true,  "vision": false, "note": "fast; default fallback; Browser Use disables screenshots for DeepSeek"},
     {"id": "qwen3.8-flash",       "label": "Qwen 3.8 Flash",      "json_mode": true,  "vision": true, "note": ""},
     {"id": "mimo-v2.6-flash",     "label": "MiMo v2.6 Flash",     "json_mode": true,  "vision": true, "note": ""},

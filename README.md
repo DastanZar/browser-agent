@@ -134,8 +134,10 @@ python dashboard.py
 ```
 
 Console URL:
-- Local Access: http://127.0.0.1:8770/
-- LAN Access: `http://<YOUR_LAN_IP>:8770/?token=<TOKEN>`
+- Local Access: http://127.0.0.1:8770/ (the default: only this computer can reach it)
+- LAN Access (opt-in): start with `DASHBOARD_HOST=0.0.0.0`, then open the `http://<YOUR_LAN_IP>:8770/?token=<TOKEN>` link
+  printed at startup. Anyone on your network with that link can drive your logged-in browser, so use it only on a
+  network you trust.
 
 ---
 
@@ -190,6 +192,13 @@ For offline machines, remote servers, or home setups, use the standalone portabl
 - **Installation**: Extract to any directory, run `Start Browser Agent.cmd`. No manual setup required.
 
 ---
+
+## Working on this repo (humans and agents)
+
+Two AI agents improve this product in parallel. Read **[AGENTS.md](AGENTS.md)** before changing anything, log every
+change in **[CHANGELOG.md](CHANGELOG.md)**, and run `python tests/test_offline.py` before pushing. Design reasons,
+benchmarks and the test record are in **[docs/ENGINEERING.md](docs/ENGINEERING.md)**. Reviews of each other's
+changes go in [docs/reviews/](docs/reviews/).
 
 ## Repository & Git Maintenance
 

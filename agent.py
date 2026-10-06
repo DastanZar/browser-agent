@@ -49,6 +49,7 @@ async def main():
     ap.add_argument("--chat", action="store_true", help="after each task, ask for the next one")
     ap.add_argument("--model", default=core.CONFIG["default"], choices=list(core.MODELS))
     ap.add_argument("--fallback", default=core.CONFIG["fallback"], choices=list(core.MODELS))
+    ap.add_argument("--no-fast", action="store_true", help="let the model write its full reasoning each step (slower)")
     ap.add_argument("--browser", default=None, help="auto | mine | agent | <cdp url>  (default: $CDP or auto)")
     args = ap.parse_args()
     task = Path(args.file).read_text() if args.file else args.task
@@ -62,7 +63,8 @@ async def main():
     browser = core.make_browser(cdp_url)
     await browser.start()
     hint = await core.visible_tab_hint(browser)
-    agent = core.make_agent(task + ("\n\n" + hint if hint else ""), args.model, args.fallback, browser, terminal_human)
+    agent = core.make_agent(task + ("\n\n" + hint if hint else ""), args.model, args.fallback, browser, terminal_human,
+                            flash_mode=not args.no_fast)
 
     Path("runs").mkdir(exist_ok=True)
     ok = True
