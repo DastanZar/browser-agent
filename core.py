@@ -55,6 +55,14 @@ LOGINS
 - If a site shows you logged out, use hand_over so the human can log in. When you or they log in,
   tick "remember me" / "keep me signed in" if offered, so the session lasts.
 
+DATA EXTRACTION & EFFICIENCY
+- When extracting data from search results or lists, extract all visible items in the current page
+  in memory before deciding whether to navigate or click into individual items.
+- Do NOT repeatedly write and read back local files (e.g. CSVs) on every step. Accumulate data
+  in your working memory, and output the final structured table in your final result or write the
+  file once when extraction is finished. Repeatedly reading files back bloats the context and causes
+  model output truncation errors.
+
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """
 
@@ -91,7 +99,7 @@ def make_llm(model_id):
     # request gets a short timeout and is retried at once, instead of one long wait per hang.
     # Reasoning models spend part of the budget thinking; 4096 (the default) truncated replies in tests.
     return ChatOpenAI(model=model_id, base_url=os.environ.get("LLM_BASE_URL", CONFIG["base_url"]), api_key=key, temperature=0.2,
-                      max_completion_tokens=12000, timeout=request_timeout(model_id), max_retries=3,
+                      max_completion_tokens=12000, timeout=request_timeout(model_id), max_retries=1,
                       dont_force_structured_output=not json_mode, add_schema_to_system_prompt=not json_mode)
 
 
@@ -109,7 +117,7 @@ def start_url(task):
     m = _URL.search(task or "")
     if not m:
         return None
-    url = m.group(1).rstrip(".,;:!?*_)]'\"")
+    url = m.group(1).rstrip(".,;:!?*_)]'\"`")
     return url if url.lower().startswith(("http://", "https://")) else "https://" + url
 
 
@@ -196,6 +204,8 @@ def _spawn(args):
         si = STARTUPINFOW()
         si.cb = ctypes.sizeof(STARTUPINFOW)
         si.lpDesktop = r"WinSta0\Default"
+        si.dwFlags = 0x00000001  # STARTF_USESHOWWINDOW
+        si.wShowWindow = 1       # SW_SHOWNORMAL
 
         pi = PROCESS_INFORMATION()
         cmd = subprocess.list2cmdline(args)
@@ -770,8 +780,8 @@ def make_agent(task, model_id, fallback_id, browser, human, on_step=None, vision
         # Always a fresh tab of our own, so the human's tabs are never navigated by accident.
         initial_actions=initial_actions,
         max_failures=4, step_timeout=6 * 3600,  # a step may wait on the human for a long time
-        # one step may retry a hung request up to 3 times, each cut off at the per-request timeout
-        llm_timeout=int(request_timeout(model_id) * 4 + 20),
+        # one step retries a hung request once before switching to fallback; avoid sitting for 100s+
+        llm_timeout=int(request_timeout(model_id) * 2 + 15),
         use_judge=False,  # extra LLM pass that grades the run; it added minutes and failed in tests
         **agent_kwargs,
     )

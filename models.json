@@ -3,15 +3,15 @@
   "base_url": "https://api.b.ai/v1",
   "key_env": "BAI_API_KEY",
   "key_file": "~/.config/bai/key",
-  "default": "mimo-v2.6-pro",
+  "default": "qwen3.8-flash",
   "fallback": "deepseek-v4.1-flash",
   "digest_model": "deepseek-v4.1-flash",
   "digest_fallback": "qwen3.8-flash",
   "models": [
-    {"id": "mimo-v2.6-pro",       "label": "MiMo v2.6 Pro",       "json_mode": true,  "vision": true, "timeout": 60, "note": "strongest of the five; default"},
-    {"id": "deepseek-v4.1-flash", "label": "DeepSeek v4.1 Flash", "json_mode": true,  "vision": false, "note": "fast; default fallback; Browser Use disables screenshots for DeepSeek"},
-    {"id": "qwen3.8-flash",       "label": "Qwen 3.8 Flash",      "json_mode": true,  "vision": true, "note": ""},
-    {"id": "mimo-v2.6-flash",     "label": "MiMo v2.6 Flash",     "json_mode": true,  "vision": true, "note": ""},
-    {"id": "glm-5.3-flash",       "label": "GLM 5.3 Flash",       "json_mode": false, "vision": true, "note": "ignores response_format, so the schema goes in the prompt"}
+    {"id": "qwen3.8-flash",       "label": "Qwen 3.8 Flash",      "json_mode": true,  "vision": true, "timeout": 60, "note": "fastest vision model (3.0s avg); default"},
+    {"id": "deepseek-v4.1-flash", "label": "DeepSeek v4.1 Flash", "json_mode": true,  "vision": false, "timeout": 60, "note": "fastest overall (1.2s avg); default fallback; Browser Use disables screenshots for DeepSeek"},
+    {"id": "mimo-v2.6-flash",     "label": "MiMo v2.6 Flash",     "json_mode": true,  "vision": true, "timeout": 25, "note": "vision support; backup flash model"},
+    {"id": "mimo-v2.6-pro",       "label": "MiMo v2.6 Pro",       "json_mode": true,  "vision": true, "timeout": 60, "note": "deep reasoning; high latency jitter (15-45s)"},
+    {"id": "glm-5.3-flash",       "label": "GLM 5.3 Flash",       "json_mode": false, "vision": true, "timeout": 25, "note": "ignores response_format, so the schema goes in the prompt"}
   ]
 }

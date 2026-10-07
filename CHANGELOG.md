@@ -2,6 +2,15 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Antigravity · LinkedIn outreach diagnostics, model timeout calibrations, and handoff report
+
+- Model stack calibration: set primary to `qwen3.8-flash` and fast fallback to `deepseek-v4.1-flash`; increased timeouts to 60s in `models.json` to prevent socket timeouts on 35k-token search DOMs.
+- URL backtick sanitization: fixed regex stripping in `core.py` and `turbo.py` to prevent trailing markdown backticks (`.../people/```) in navigation.
+- Session resilience: added dead-browser port check in `dashboard.py::ensure_browser` to auto-drop orphaned sessions and avoid crash cascades.
+- Working memory extraction policy: added explicit guidance in `core.py` policy against repetitive intermediate CSV read/write loops.
+- Handoff report & dataset: documented 7 extracted Uber HR candidates, technical autopsy of Boolean/filter limitations on LinkedIn, and 3-minute execution blueprint in `docs/reviews/2026-10-07-linkedin-findings.md`.
+- Evidence: `python tests/test_offline.py` all 10 tests pass cleanly.
+
 ## 2026-10-07 · Antigravity · Fix Windows desktop visibility via Win32 CreateProcessW and separate AGENT_PORT to 9223
 
 - Windows desktop visibility fix: CPython's `subprocess.STARTUPINFO` ignores `lpDesktop`; implemented `CreateProcessW` directly via `ctypes` with `lpDesktop = "WinSta0\\Default"` so spawned Chrome windows render on the user's interactive display instead of the background task runner's hidden desktop.

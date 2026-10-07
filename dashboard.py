@@ -109,6 +109,16 @@ class Studio:
 
     async def ensure_browser(self):
         if self.browser is not None:
+            try:
+                cdp = getattr(self.browser, "cdp_url", "")
+                if "127.0.0.1:" in cdp:
+                    m = re.search(r":(\d+)", cdp)
+                    if m and not core.port_open(int(m.group(1))):
+                        await self.drop_browser()
+            except Exception:
+                await self.drop_browser()
+
+        if self.browser is not None:
             return
         run = self.current
         if core.signin_open() and run is not None:

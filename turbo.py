@@ -69,14 +69,14 @@ def extract_target_url(task: str) -> str | None:
     text = task.strip()
 
     # 1. Look for explicit http/https URLs
-    m_url = re.search(r'https?://[^\s<>"\')]+', text)
+    m_url = re.search(r'https?://[^\s<>"\')`]+', text)
     if m_url:
-        return m_url.group(0).rstrip('.,;:!?*_)]\'"')
+        return m_url.group(0).rstrip('.,;:!?*_)]\'"`')
 
     # 2. Look for explicit domain patterns like 'something.com/path' or 'sub.domain.org'
-    m_domain = re.search(r'\b([a-zA-Z0-9-]+\.(?:com|org|io|net|dev|ai|gov|edu)(?:/[^\s<>"\')]+)?)\b', text, re.IGNORECASE)
+    m_domain = re.search(r'\b([a-zA-Z0-9-]+\.(?:com|org|io|net|dev|ai|gov|edu)(?:/[^\s<>"\')`]+)?)\b', text, re.IGNORECASE)
     if m_domain:
-        raw_dom = m_domain.group(1).lower().rstrip('.,;:')
+        raw_dom = m_domain.group(1).lower().rstrip('.,;:`\'"')
         return f"https://{raw_dom}"
 
     # 3. Look for phrases like 'open <service>', 'go to <service>', 'navigate to <service>'
@@ -130,20 +130,17 @@ Your goal is to take conversational, broad, or complex operator prompts and comp
 
 GUIDELINES FOR COMPILATION:
 1. Target Website & Entry Point: State the exact target URL clearly as the very first instruction.
-2. Exact Search Syntax: When searching (e.g. LinkedIn, Google, GitHub), convert vague role titles into high-precision Boolean queries.
-   Example: For "mid level employees of uber, microsoft, stripe and their hr and hiring managers, talent acquisition" ->
-   Generate exact search string: ("Uber" OR "Microsoft" OR "Stripe") AND ("Talent Acquisition" OR "Recruiter" OR "HR Manager" OR "Hiring Manager")
-3. Execution Phases:
-   - Phase 1: Navigation & Query Entry
-   - Phase 2: Result Filtering (e.g. Filter by People, Location if applicable)
-   - Phase 3: Extraction Schema (specify exact fields to capture: Name, Current Title, Company, Profile URL)
-   - Phase 4: Action/Interaction Rules (specify exact buttons/form elements to interact with, modal handling, and stop conditions if 2FA/verification needed)
-4. Safety & Guardrails: Specify max targets (e.g. "Extract first 5-10 profiles to avoid rate limits"), respect site limits, and never attempt bypassing authentication gates.
-5. Output format: Return concise, structured markdown ready for direct execution.
+2. Clean Search Syntax: Use clean, direct keywords or parameterized URLs rather than complex, over-nested Boolean expressions (e.g. prefer `Uber "Talent Acquisition"` or direct company filters over nested parenthesized syntax that break web search bars).
+3. Two-Stage Batch Architecture:
+   - Phase 1: Search & Batch Candidate Extraction (extract all candidate profile links and visible metadata directly from the search result cards in memory).
+   - Phase 2: Action / Interaction Iteration (visit extracted candidate URLs sequentially to execute actions like Connect or form fills).
+4. No File Micro-Management: Never instruct the agent to write, append, or read back local CSV files on every step. Instruct it to maintain candidates in working memory and output the final structured markdown table (and optional single file write) at the end. Intermediate file reads cause context window bloat and loop crashes.
+5. Safety & Guardrails: Specify max targets (e.g. 5-10 profiles to avoid rate limits), respect site limits, and never attempt bypassing authentication gates.
+6. Output format: Return concise, structured markdown ready for direct execution.
 """
 
 
-async def compile_prompt(raw_prompt: str, model_id: str = "mimo-v2.6-flash") -> dict[str, Any]:
+async def compile_prompt(raw_prompt: str, model_id: str = "deepseek-v4.1-flash") -> dict[str, Any]:
     """Compiles a conversational user prompt into a structured execution blueprint using a fast LLM."""
     start_t = time.time()
     try:
