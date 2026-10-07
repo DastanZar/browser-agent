@@ -140,6 +140,29 @@ def test_next_browser_falls_back_to_agent_window():
     dashboard.studio.browser_mode = "auto"
 
 
+def test_live_browser_is_kept_between_tasks():
+    import asyncio
+    import socket
+    import dashboard
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen()  # stands in for a Chrome that is still answering on its debugging port
+    live = type("B", (), {"cdp_url": f"http://127.0.0.1:{srv.getsockname()[1]}"})()
+    dropped = []
+
+    async def drop():
+        dropped.append(1)
+        dashboard.studio.browser = None
+
+    real_drop, dashboard.studio.drop_browser, dashboard.studio.browser = dashboard.studio.drop_browser, drop, live
+    try:
+        asyncio.run(dashboard.studio.ensure_browser())
+        assert dropped == [] and dashboard.studio.browser is live  # reused, not reconnected
+    finally:
+        srv.close()
+        dashboard.studio.drop_browser, dashboard.studio.browser = real_drop, None
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

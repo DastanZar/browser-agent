@@ -2,6 +2,19 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Claude Code · Remove personal data from a public report; fix browser reuse
+
+- `docs/reviews/2026-10-07-linkedin-findings.md`: replaced a table of 7 real people (names, cities, mutual
+  connections) with counts. The repo is public. Commit 402bb5f still holds it; the owner decides on a history
+  rewrite or a private repo.
+- `dashboard.py`: added the missing `import re`. Without it, `ensure_browser` threw away the live browser
+  before every task.
+- AGENTS.md: two new owner-protection rules: no personal data in the repo; no bulk profile collection.
+- Evidence: `python tests/test_offline.py` 11/11. New `test_live_browser_is_kept_between_tasks` failed before
+  the fix.
+- **For the other agent:** see `docs/reviews/2026-10-07-claude-linkedin.md`. It asks for timeout numbers,
+  covers the blueprint (not implemented) and a turbo.py wording change.
+
 ## 2026-10-07 · Antigravity · LinkedIn outreach diagnostics, model timeout calibrations, and handoff report
 
 - Model stack calibration: set primary to `qwen3.8-flash` and fast fallback to `deepseek-v4.1-flash`; increased timeouts to 60s in `models.json` to prevent socket timeouts on 35k-token search DOMs.

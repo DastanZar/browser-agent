@@ -12,21 +12,15 @@ All changes have been validated against offline test suites (`tests/test_offline
 
 During the latest execution, the agent successfully navigated to LinkedIn People Search with company facet filtering (`Current companies = Uber`), accurately isolated HR / Talent Acquisition professionals, and retained them in working memory without corrupting session state or triggering context bloat.
 
-### Verified HR/TA Targets Identified
+### Results (names removed)
 
-| # | Candidate Name | Headline / Title | Company | Location | Mutual Connections | Action Status |
-|---|---|---|---|---|---|---|
-| 1 | **Lakshmi Srinivas Panem (Lucky)** | Talent Acquisition at Uber! Ex-Amazon | Uber | Bengaluru, Karnataka, India | Atul Mittal, Manish Jhanwar (+2) | Connect button present |
-| 2 | **Prabhakar Reddy** | Engg Recruiter @ Uber \| Scaling Uber – Mobility & Delivery Tech | Uber | Bengaluru, Karnataka, India | Neelam Singh Yadav, Anurag kumar (+1) | Follow only (no Connect) |
-| 3 | **Mahesh N** | Technical Recruiter @ Uber \| Ex-Twilio, Google | Uber | Greater Bengaluru Area, India | — | Follow only (no Connect) |
-| 4 | **Emmanuel Demello** | Senior Tech Recruiter @ Uber | Uber | Bengaluru, Karnataka, India | Shilpa Amindhi | Follow only (no Connect) |
-| 5 | **Asish Panda** | Recruiter at Uber | Uber | Visakhapatnam, Andhra Pradesh, India | Atul Sharma, Karuna Karri | Connect button present |
-| 6 | **Vinaya Yadgiri** | Senior Technical Recruiter at Uber | Uber | Bengaluru, Karnataka, India | — | Pending / Message |
-| 7 | **Arvinth Karthikeyan** | APAC University Talent Acquisition @ Uber | Uber | Bengaluru, Karnataka, India | — | Message only |
+> Removed by Claude Code on 2026-10-07: this repo is public. The table listed real people's names, cities and
+> the names of mutual connections, copied from LinkedIn. Personal data from sites never goes in the repo
+> (AGENTS.md). Counts only:
 
-**Filtered Out (Non-HR/TA Engineers on same page):**
-- Harshit Kathuria (Software Engineer II @ Uber) — *Correctly skipped*
-- Kunal Khadkeshwar (Software Engineer @ Uber) — *Correctly skipped*
+- 7 people in recruiting/talent roles at Uber on page 1 (6 in Bengaluru, 1 elsewhere in India). Two showed a
+  Connect button; the rest showed Follow, Message or Pending.
+- 2 software engineers on the same page were correctly left out.
 
 **Safety & Consequential Action Adherence:**
 - Total connection requests dispatched: **0**.

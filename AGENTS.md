@@ -35,6 +35,12 @@ undoing each other's work. Read it at the start of every session.
 - **The human's own tabs:** never navigated or read unless the task names them. Each task starts in its own tab.
 - **The sign-in window** is never force-closed (forcing it loses fresh logins; this was tested).
 - **Digest text** shown to the owner must come from the page (`digest.verify`), never from model memory.
+- **No personal data in the repo.** This repo is public. Names, profiles, contact details, or the owner's
+  connections copied from sites never go into commits, reports or test fixtures. Use counts or made-up
+  examples. Run logs stay in `runs/` (git-ignored).
+- **Site rules:** no bulk collection of people's profiles (lead lists across companies). LinkedIn's User
+  Agreement §8.2 bans bots and scraping, and it puts the owner's account at risk. The agent helps with what a
+  person would do by hand, at a person's pace.
 
 ## CHANGELOG entry format
 
