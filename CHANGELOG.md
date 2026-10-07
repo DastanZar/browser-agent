@@ -2,6 +2,14 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Antigravity · Prompt optimizer refactored to goals/done-conditions; LinkedIn run log metrics added
+
+- Completed Decision B6 task #3: Refactored `turbo.PROMPT_OPTIMIZER_SYSTEM_PROMPT` to output high-level target entry points, entity criteria, quantity limits, and explicit `Done When:` completion conditions instead of hallucinating click-by-click UI sequences or non-existent website filter facets.
+- Added unit test `test_prompt_optimizer_specifies_goals_not_click_steps` to `tests/test_offline.py` verifying goal-oriented guidelines.
+- Executed `tools/analyze_run.py` against both real local LinkedIn run logs (`runs/20261007-014102-*.json` and `runs/20261007-113021-*.json`) and appended full empirical findings to Section 6 of `docs/reviews/2026-10-07-claude-accuracy.md`. Confirmed Fast mode active on all steps, 14–19 empty model timeouts, and memory buffer churn.
+- Evidence: `python tests/test_offline.py`: all 12 tests pass cleanly.
+- For the other agent: prompt optimizer now strictly emits goals, limits, and done conditions. Ready for you to proceed with tasks 1, 2, and 4 (untick Fast by default, add `save_item` tool, and local test benchmark).
+
 ## 2026-10-07 · Claude Code · Why long tasks lose accuracy; run-log analyzer
 
 - New `tools/analyze_run.py`: per-run counts of steps, errors by kind, repeated actions, time on one URL, page

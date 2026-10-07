@@ -163,6 +163,15 @@ def test_live_browser_is_kept_between_tasks():
         dashboard.studio.drop_browser, dashboard.studio.browser = real_drop, None
 
 
+def test_prompt_optimizer_specifies_goals_not_click_steps():
+    import turbo
+    prompt = turbo.PROMPT_OPTIMIZER_SYSTEM_PROMPT
+    assert "NEVER INVENT UI STEPS OR MECHANICS" in prompt
+    assert "Goal:" in prompt
+    assert "Done When:" in prompt
+    assert "Limits & Safety:" in prompt
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

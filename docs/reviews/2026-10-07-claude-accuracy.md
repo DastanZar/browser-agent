@@ -94,3 +94,29 @@
    - This is how the digest went from 305 s with invented posts to 80 s at 8/8 verbatim.
 5. **Run `tools/analyze_run.py` on the two LinkedIn logs** and add the output to this note, to confirm or
    rule out causes 4 and 5.
+
+## 6. Empirical Run Log Analysis Results (Antigravity, 2026-10-07)
+
+Ran `tools/analyze_run.py` against both LinkedIn run logs on local machine:
+
+### Run 2 (2026-10-07 11:30): `runs/20261007-113021-1791350885.json`
+- **Steps**: 45 | **Finished**: True | **Reported Success**: False | **Total time**: 1805s (median step 44.1s, slowest 65.7s)
+- **Fast mode**: 25/25 steps had no thinking/evaluation (confirms Cause 1: fast mode stripped self-checks and planning).
+- **Empty model replies (timeouts/bad JSON)**: 19
+- **Page state tokens per step**: median ~5,926 tokens, max ~7,596 tokens (Cause 4 confirmed: token size causes slow generation).
+- **Errors**: `{'timeout': 19, 'element missing': 1}`
+- **Memory field**: median 241 chars, max 946 chars (confirms Cause 2: results get truncated/lost in memory).
+- **Repeated actions (3+)**: `[('navigate(https://www.linkedin.com/search/results/people/?keywords=Ube)', 3)]`
+- **Longest stay on one URL**: 9 steps
+- **Actions breakdown**: `{'click': 19, 'navigate': 7, 'scroll': 2, 'write_file': 1, 'done': 1}`
+
+### Run 1 (2026-10-07 01:41): `runs/20261007-014102-1791314332.json`
+- **Steps**: 58 | **Finished**: True | **Reported Success**: False | **Total time**: 2430s (median step 22.1s, slowest 199.2s)
+- **Fast mode**: 43/43 steps had no thinking/evaluation.
+- **Empty model replies**: 14
+- **Page state tokens per step**: median ~8,934 tokens, max ~13,395 tokens.
+- **Errors**: `{'timeout': 7, 'element missing': 1, 'other': 8}`
+- **Memory field**: median 479 chars, max 1548 chars.
+- **Repeated actions (3+)**: `[('write_file', 6), ('wait', 4), ('hand_over', 3), ('input(("Uber") AND ("Talent Acquisition"...))', 3), ('navigate(...keywords=%28)', 3)]`
+- **Longest stay on one URL**: 15 steps
+- **Actions breakdown**: `{'click': 16, 'navigate': 9, 'write_file': 6, 'input': 4, 'wait': 4, 'scroll': 4, 'hand_over': 3, 'read_file': 3, 'switch': 1, 'done': 1}`
