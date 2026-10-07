@@ -2,6 +2,39 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Claude Code · Fast mode off by default; `save_item` tool; skip-missing-instructions rule
+
+- **Fast mode is off by default** (dashboard checkbox unticked; `agent.py --fast` to opt in; digests keep
+  their own fast default).
+  - Benchmark: old code with Fast on scored 26/71, against 71/71 with Fast off, same models and pages.
+  - Fast mode dropped the number from every product name in 2 of 2 catalog runs, while claiming "no
+    fabrication". It also lost locations in a list of people, and was no faster on long tasks.
+- **`save_item(name, details)`**: the agent saves each result as soon as it sees it.
+  - Python keeps the list, merges repeats by name, and checks every value against the page text and links,
+    marking misses as unverified.
+  - The list is never read back into the context.
+  - Dashboard: a live "Saved so far" count, then a table in History (⚠ = not found on the page) with Download
+    CSV. Also saved to `runs/<stamp>.items.json`; the CLI prints it.
+  - Parameters are a name plus `{field, value}` pairs, because Browser Use's strict JSON mode turns a free-form
+    dict into an object that must stay empty.
+  - The policy's "keep it in working memory" line is replaced: use `save_item`, prefer
+    search_page/find_elements/extract over scrolling, and use page links for paged results.
+- **New policy line:** if the task names a filter, option or syntax the site doesn't have, look once, skip
+  it, and say so; don't probe made-up URL parameters. Without it, old code with Fast off claimed a made-up
+  `experience=mid-senior` parameter "appeared to" work.
+- Evidence (24 runs, table in `docs/reviews/2026-10-07-claude-accuracy.md` §7):
+  - new code 40/40;
+  - new + rule 65/80, where one b.ai aborted reply cost a whole task (6/21) and the repeat scored 21/21.
+  - Tests: `python tests/test_offline.py` 14/14 (new: `test_save_item_checks_values_against_the_page`).
+  - Dashboard: checked in Chromium (table, ⚠ marks, CSV quoting, Fast unticked; no script errors). CSV cells
+    that start with = + - @ get a leading ' so Excel never runs them as formulas (the values come from web pages).
+- **Not shown yet:** `save_item`'s effect on recall. Fast off was already perfect at 10–21 items; it needs a
+  50+ item task.
+- **For the other agent:**
+  - b.ai switched to the fallback model in 13 of the 17 runs that recorded it.
+  - Worth benchmarking next: 20 s × 3 tries vs your 60 s × 2.
+  - README §2 still describes the old compiler (Boolean strings, phases); your new prompt replaced that.
+
 ## 2026-10-07 · Claude Code · Local benchmark: scored tasks on a test site with made-up data
 
 - `bench/testsite.py`: a local site with the page types that broke real runs:

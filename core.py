@@ -16,6 +16,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from pydantic import BaseModel
 from browser_use import ActionResult, Agent, Browser, BrowserSession, ChatOpenAI, Tools
 import turbo
 
@@ -55,13 +56,16 @@ LOGINS
 - If a site shows you logged out, use hand_over so the human can log in. When you or they log in,
   tick "remember me" / "keep me signed in" if offered, so the session lasts.
 
-DATA EXTRACTION & EFFICIENCY
-- When extracting data from search results or lists, extract all visible items in the current page
-  in memory before deciding whether to navigate or click into individual items.
-- Do NOT repeatedly write and read back local files (e.g. CSVs) on every step. Accumulate data
-  in your working memory, and output the final structured table in your final result or write the
-  file once when extraction is finished. Repeatedly reading files back bloats the context and causes
-  model output truncation errors.
+COLLECTING RESULTS
+- When the task asks for a list (people, products, prices, rows…), call save_item for each item the
+  moment you see it, with the values copied exactly as shown on the page. Don't keep the list in your
+  memory or in files: save_item keeps it, checks it against the page, and shows it to the human.
+- If save_item says a value isn't on the page, fix it from the page and save again, or leave it out.
+- If the task names a filter, option, field or search syntax the site doesn't have (or it returns nothing),
+  look once, then skip that part, do the rest, and say in your final answer what you skipped. Don't probe
+  hidden settings or made-up URL parameters for it.
+- Prefer search_page, find_elements or extract over repeated scrolling to read long pages; for paged
+  results, open the next page (a page link or a page= address) rather than scrolling.
 
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """
@@ -557,7 +561,16 @@ def _bare(u):
     return re.sub(r"^https?://(www\.)?", "", (u or "").strip().lower()).rstrip("/")
 
 
-def build_tools(human, gate=None, capture=None, collector=None):
+class ItemField(BaseModel):
+    field: str
+    value: str
+
+
+def _plain(s):
+    return re.sub(r"\s+", " ", re.sub(r"[^\w$.%@:/-]+", " ", str(s).lower())).strip()
+
+
+def build_tools(human, gate=None, capture=None, collector=None, items=None):
     """human: async (kind, text) -> str, with kind in {"ask", "handover", "confirm"}."""
     tools = Tools()
     opened = {}  # what read_link was asked for -> (real URL, title), to fix links the model reports later
@@ -692,6 +705,45 @@ def build_tools(human, gate=None, capture=None, collector=None):
                             include_extracted_content_only_once=True,
                             long_term_memory=f"Read linked page: {title or final_url}")
 
+    if items is not None:
+        @tools.action("Save one result (a person, product, company, row…) as soon as you see it on the page. "
+                      "name = the item's name; details = the other values the task asks for, e.g. "
+                      "[{\"field\": \"title\", \"value\": \"…\"}, {\"field\": \"location\", \"value\": \"…\"}]. "
+                      "Copy every value exactly as shown. Call it once per item, and keep going: the list is kept "
+                      "and shown to the human for you. Saving the same name again updates that item.")
+        async def save_item(name: str, browser_session: BrowserSession, details: list[ItemField] | None = None) -> ActionResult:
+            fields = {"name": str(name).strip()}
+            for d in details or []:
+                d = d if isinstance(d, dict) else d.model_dump()
+                if str(d.get("value", "")).strip() and str(d.get("field", "")).strip():
+                    fields[str(d["field"]).strip()] = str(d["value"]).strip()
+            if not fields["name"]:
+                return ActionResult(error="save_item needs the item's name.")
+            # Check every value against what is on the page right now (text and link addresses).
+            cdp = await browser_session.get_or_create_cdp_session()
+            res = await cdp.cdp_client.send.Runtime.evaluate(params={"expression": r"""(() => [
+                document.body ? document.body.innerText : '',
+                [...document.querySelectorAll('a[href]')].map(a => a.href).join('\n')])()""", "returnByValue": True},
+                session_id=cdp.session_id)
+            text, hrefs = (res.get("result", {}).get("value") or ["", ""])
+            page_text, links = _plain(text), {_bare(h) for h in (hrefs or "").split("\n") if h}
+            missing = [k for k, v in fields.items()
+                       if not (_plain(v) in page_text or (_bare(v) in links if re.match(r"^(https?://|www\.)", v) else False))]
+            ident = _plain(next(iter(fields.values())))
+            for it in items:
+                if _plain(next(iter(it["fields"].values()))) == ident:  # same item again: update it
+                    it["fields"].update(fields)
+                    it["unverified"] = sorted((set(it["unverified"]) - set(fields)) | set(missing))
+                    break
+            else:
+                it = {"fields": fields, "unverified": sorted(missing)}
+                items.append(it)
+            msg = f"Saved ({len(items)} so far). Keep going from here."
+            if it["unverified"]:
+                msg += (f" Not found on this page: {', '.join(it['unverified'])}. Copy those values exactly as shown "
+                        "and save again, or leave them out.")
+            return ActionResult(extracted_content=msg, long_term_memory=f"Saved: {ident[:50]}")
+
     if collector is not None:
         async def real_link(browser_session, u):
             """The post link only if it really exists on the page (models invent anchors like #post-1)."""
@@ -739,8 +791,9 @@ def build_tools(human, gate=None, capture=None, collector=None):
 
 
 def make_agent(task, model_id, fallback_id, browser, human, on_step=None, vision=None, read_only=False, capture=None,
-               collector=None, turbo_mode=False,
+               collector=None, turbo_mode=False, save_items=True,
                **agent_kwargs):
+    """save_items: give the agent the save_item tool; the saved list is on agent.saved_items."""
     gate = Gate(human, read_only=read_only)
 
     async def step_hook(state, output, n):
@@ -771,10 +824,11 @@ def make_agent(task, model_id, fallback_id, browser, human, on_step=None, vision
     if not initial_actions:
         initial_actions = [{"navigate": {"url": start_url(task) or "about:blank", "new_tab": True}}]
 
-    return Agent(
+    items = [] if save_items and collector is None else None  # digests keep posts with save_post instead
+    agent = Agent(
         task=task.strip(), llm=make_llm(model_id),
         fallback_llm=make_llm(fallback_id) if fallback_id and fallback_id != model_id else None,
-        browser=browser, tools=build_tools(human, gate, capture, collector), extend_system_message=POLICY,
+        browser=browser, tools=build_tools(human, gate, capture, collector, items), extend_system_message=POLICY,
         sensitive_data=secrets or None, use_vision=vision,
         register_new_step_callback=step_hook,
         # Always a fresh tab of our own, so the human's tabs are never navigated by accident.
@@ -785,3 +839,5 @@ def make_agent(task, model_id, fallback_id, browser, human, on_step=None, vision
         use_judge=False,  # extra LLM pass that grades the run; it added minutes and failed in tests
         **agent_kwargs,
     )
+    agent.saved_items = items if items is not None else []
+    return agent

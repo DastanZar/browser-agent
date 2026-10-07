@@ -58,11 +58,12 @@ Persistent turn history with real-time state caching, status chips (`DONE`, `FAI
   `"Uber" AND ("Talent Acquisition" OR "Recruiter" OR "HR Manager" OR "Hiring Manager" OR "People Operations")`
 - **Multi-Phase Architecture**: Automatically formats instructions into Phase 1 (Navigation & Auth), Phase 2 (Filtering), Phase 3 (Extraction Schema Table), Phase 4 (Action & Modal Rules), and Safety Guardrails.
 
-### ⚡ 3. High-Speed Fast Mode (`flash_mode=True`)
-- Suppresses verbose model reasoning monologues. The agent communicates concise, high-velocity tool actions directly over CDP.
-- **Empirical Execution Benchmarks**:
-  - Open Wikipedia & extract featured article: **31.7s** (down from 170s+ in normal mode).
-  - Multi-turn follow-up queries: **32.9s**.
+### ⚡ 3. Fast Mode (`flash_mode=True`), off by default
+- Browser Use's flash mode: a 343-word system prompt instead of the full one, with no step-by-step self-check,
+  planning or loop-breaking rules. Fine for short tasks ("open X and tell me Y").
+- **Off by default since 2026-10-07.** On the local benchmark (`bench/`), it scored 26/71 against 71/71 with
+  Fast off. It shortened every product name in a list (0/42 over two runs), and lost fields from a list of
+  people. It was also no faster on long tasks. Details: `docs/reviews/2026-10-07-claude-accuracy.md`.
 
 ### 🧠 2. Multi-Turn Follow-Up Memory
 - Preserves context, active tabs, and conversational thread history across multiple instructions.

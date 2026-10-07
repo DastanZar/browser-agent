@@ -172,6 +172,39 @@ def test_prompt_optimizer_specifies_goals_not_click_steps():
     assert "Limits & Safety:" in prompt
 
 
+class FakeSession:
+    """Answers save_item's page read with fixed text and links."""
+    def __init__(self, text, links=()):
+        page = [text, "\n".join(links)]
+
+        class Send:
+            class Runtime:
+                @staticmethod
+                async def evaluate(params, session_id):
+                    return {"result": {"value": page}}
+        self.cdp = type("C", (), {"cdp_client": type("CC", (), {"send": Send})(), "session_id": "s"})()
+
+    async def get_or_create_cdp_session(self):
+        return self.cdp
+
+
+def test_save_item_checks_values_against_the_page():
+    import asyncio
+    items = []
+    act = core.build_tools(None, items=items).registry.registry.actions["save_item"]
+    page = FakeSession("Mira Okafor\nTechnical Recruiter at Acme Mobility\nAustin, Texas\nConnect")
+
+    def save(name, **details):
+        params = act.param_model(name=name, details=[{"field": k, "value": v} for k, v in details.items()])
+        return asyncio.run(act.function(params=params, browser_session=page)).extracted_content
+
+    assert "Not found" not in save("Mira Okafor", title="Technical Recruiter", location="Austin, Texas")
+    assert "Not found on this page: location" in save("Tobias Wren", location="Denver, Colorado")  # invented
+    save("mira  okafor", location="Austin, Texas")                     # same person again: updated, not added
+    assert len(items) == 2 and items[0]["fields"]["title"] == "Technical Recruiter" and items[0]["unverified"] == []
+    assert items[1]["unverified"] == ["location", "name"]
+
+
 def test_bench_scorer():
     sys.path.insert(0, str(ROOT / "bench"))
     import run as bench

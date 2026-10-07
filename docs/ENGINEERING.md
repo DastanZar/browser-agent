@@ -49,8 +49,9 @@ your phone through [ntfy](https://ntfy.sh).
    - **Follow-up** (on by default): the next task continues the same conversation. It remembers what it saw and
      did, and stays on its page, so "now open the third result" works. Click *New conversation* (under the Run
      button) to start fresh. Changing the model or Fast mode also starts fresh.
-   - **Fast mode** (on by default): the model skips writing its long reasoning each step, so runs take 2–4×
-     less time. Turn it off for long, tricky tasks if the agent starts making careless mistakes.
+   - **Fast mode** (off by default since 2026-10-07): the model skips its step-by-step reasoning and checks.
+     It's quicker on short tasks, but on the benchmark it lost accuracy on lists and long tasks (26/71 right vs
+     71/71), and wasn't faster there. Use it only for short, explicit tasks.
 
 **How it treats your tabs:**
 - Each task starts in a **new tab**, never in one of yours.
@@ -173,7 +174,7 @@ DeepSeek Flash or Qwen Flash. b.ai returned an occasional 502 during tests; the 
 
 **Speed** (Oct 5 benchmark: the same signup task, 2 runs each):
 
-| Model | Normal | **Fast mode (default)** |
+| Model | Normal | **Fast mode** (was the default until 2026-10-07; short task only) |
 |---|---|---|
 | MiMo v2.6 Pro | 39–121 s | **36–46 s** |
 | DeepSeek v4.1 Flash | 41–80 s | **34–37 s** |

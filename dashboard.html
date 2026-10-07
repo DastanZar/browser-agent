@@ -856,8 +856,8 @@ details[open] summary::before {
           <span><b>Follow-up</b>: continue conversation (preserves context &amp; page)</span>
         </label>
         <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
-          <input type="checkbox" id="fast" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
-          <span><b>Fast mode</b>: short replies without reasoning monologue (34&ndash;46s)</span>
+          <input type="checkbox" id="fast" style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
+          <span><b>Fast mode</b>: quicker, but skips the agent's step-by-step checks; for short tasks only</span>
         </label>
       </div>
 
@@ -1196,6 +1196,7 @@ function renderNow(c, paused) {
   $("now").innerHTML = `<div class="muted" style="margin-bottom:6px">Model: <b style="color:var(--text-main)">${esc(c.model)}</b>${c.fallback ? " &rarr; " + esc(c.fallback) : ""}</div>
     <div style="margin:4px 0 14px;font-size:14px;font-weight:600"><span class="status ${c.status}">${paused ? "paused" : c.status}</span> &bull; ${esc(c.task.slice(0, 220))}</div>
     ${ask}
+    ${(c.items || []).length ? `<div class="muted" style="margin-bottom:8px">Saved so far: <b style="color:var(--text-main)">${c.items.length}</b> item${c.items.length === 1 ? "" : "s"} (the full table appears in History when the task ends)</div>` : ""}
     <div class="live"><ol class="steps">${steps || '<li class="muted">Initializing execution pipeline...</li>'}</ol>
     <img class="shot" id="shot" alt="Target Browser Canvas"></div>`;
   if (keepAns !== null && $("ans")) { $("ans").value = keepAns; $("ans").focus(); }
@@ -1212,8 +1213,33 @@ async function sendAnswer(pid, preset) {
   clearInterval(titleTimer); document.title = "Browser Automation Suite"; refresh();
 }
 
+function itemCols(items) {
+  const cols = [];
+  items.forEach(it => Object.keys(it.fields || {}).forEach(k => { if (!cols.includes(k)) cols.push(k); }));
+  return cols;
+}
+function itemsTable(r) {   // what the agent saved with save_item; ⚠ = value not found on the page when saved
+  const items = r.items || [];
+  if (!items.length) return "";
+  const cols = itemCols(items);
+  const body = items.map(it => "<tr>" + cols.map(c => `<td>${esc((it.fields || {})[c] || "")}${(it.unverified || []).includes(c) ? ' <span title="not found on the page when saved">⚠</span>' : ""}</td>`).join("") + "</tr>").join("");
+  return `<details style="margin-top:6px"><summary>Saved items (${items.length}) &bull; <a href="#" data-csv="${r.id}" style="color:var(--brand-600);font-weight:600;text-decoration:none">Download CSV</a></summary>
+    <div style="overflow-x:auto"><table class="items" style="border-collapse:collapse;font-size:12px;margin-top:6px"><tr>${cols.map(c => `<th style="text-align:left;padding:3px 8px">${esc(c)}</th>`).join("")}</tr>${body}</table></div></details>`;
+}
+function downloadCsv(r) {
+  const items = r.items || [], cols = itemCols(items);
+  // Values come from web pages: a leading = + - @ would run as a formula in Excel, so it gets a ' first.
+  const q = v => { let t = String(v ?? ""); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+  const csv = [cols.map(q).join(","), ...items.map(it => cols.map(c => q((it.fields || {})[c])).join(","))].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"}));
+  a.download = `browser-agent-items-${r.id}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 function renderList(el, rows, empty, withCancel) {
-  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id, r.turbo, r.optimized]));
+  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id, r.turbo, r.optimized, (r.items || []).length]));
   if (el.dataset.lastKey === key) return;
 
   const openIds = new Set();
@@ -1227,8 +1253,14 @@ function renderList(el, rows, empty, withCancel) {
     <div class="t">${esc(r.task)}</div>
     <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.turbo ? ' &bull; <span style="color:#0284C7;font-weight:700;font-size:11px;">⚡ TURBO</span>' : ''}${r.optimized ? ' &bull; <span style="color:#7C3AED;font-weight:700;font-size:11px;">✨ OPTIMIZED</span>' : ''}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
     ${withCancel ? ` &bull; <a href="#" data-cancel="${r.id}" style="color:var(--status-rose-text);font-weight:600;text-decoration:none">Cancel</a>` : (r.notion_page_id ? ` &bull; <span style="color:var(--brand-600);font-weight:600;font-size:11px;">Synced to Notion</span>` : ` &bull; <a href="#" data-sync="${r.id}" style="color:var(--brand-600);font-weight:600;text-decoration:none;font-size:11px;">Sync to Notion</a>`)}</div>
-    ${r.result ? `<details ${openIds.has(String(r.id)) ? 'open' : ''}><summary>View Execution Summary</summary><div class="result">${esc(r.result)}</div></details>` : ""}</li>`).join("")
+    ${r.result ? `<details ${openIds.has(String(r.id)) ? 'open' : ''}><summary>View Execution Summary</summary><div class="result">${esc(r.result)}</div></details>` : ""}
+    ${itemsTable(r)}</li>`).join("")
     : `<li class="muted" style="cursor:default;padding:16px 0;text-align:center">${empty}</li>`;
+  el.querySelectorAll("a[data-csv]").forEach((a) => a.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const r = rows.find(x => String(x.id) === a.dataset.csv);
+    if (r) downloadCsv(r);
+  });
   el.querySelectorAll("li[data-task] .t").forEach((t) => t.onclick = () => { $("task").value = t.parentElement.dataset.task; $("task").focus(); });
   el.querySelectorAll("[data-cancel]").forEach((a) => a.onclick = async (e) => { e.preventDefault(); await api("/api/control", { action: "cancel", id: +a.dataset.cancel }); refresh(); });
   el.querySelectorAll("[data-sync]").forEach((a) => a.onclick = async (e) => {
@@ -1548,8 +1580,7 @@ $("digestRun").onclick = async () => {
     const r = await api("/api/watches", {
       action: "run",
       model: $("model").value,
-      fallback: $("fallback").value || null,
-      fast: $("fast").checked
+      fallback: $("fallback").value || null
     });
     if (r.queued) {
       switchTab('queue');

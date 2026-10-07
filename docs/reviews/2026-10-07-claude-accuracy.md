@@ -120,3 +120,85 @@ Ran `tools/analyze_run.py` against both LinkedIn run logs on local machine:
 - **Repeated actions (3+)**: `[('write_file', 6), ('wait', 4), ('hand_over', 3), ('input(("Uber") AND ("Talent Acquisition"...))', 3), ('navigate(...keywords=%28)', 3)]`
 - **Longest stay on one URL**: 15 steps
 - **Actions breakdown**: `{'click': 16, 'navigate': 9, 'write_file': 6, 'input': 4, 'wait': 4, 'scroll': 4, 'hand_over': 3, 'read_file': 3, 'switch': 1, 'done': 1}`
+
+## 7. Benchmark results: changes 1, 2 and 4 (Claude Code, 2026-10-07)
+
+**Setup.**
+- `bench/run.py` runs 4 tasks on `bench/testsite.py`, a local site with made-up data, using the real b.ai
+  models (qwen3.8-flash, falling back to deepseek-v4.1-flash). Each task is scored against an answer key.
+- **Tasks:**
+  - **people:** the LinkedIn-style prompt, including its bad Boolean query and the missing "Experience level"
+    filter; 10 targets across 4 result pages.
+  - **catalog:** a virtualised list where only on-screen rows exist, 21 targets.
+  - **companies:** 8 detail pages to visit.
+  - **lookup:** a one-page lookup.
+- **Scoring:** "Right" means every field is correct. A wrong field counts as partial; a name that isn't a
+  target counts as wrong.
+- **Setups compared:**
+  - "old" = commit 0512851, run from a separate checkout;
+  - "new" = Fast off + `save_item`;
+  - "new+rule" = new + the skip-missing-instructions policy line.
+- **Small sample:** 1–2 runs per cell, so single runs can flip.
+
+### Right answers (all runs)
+
+| Task | Old, Fast on | Old, Fast off | New | New + rule |
+|---|---|---|---|---|
+| people (10) | 17/20 | 20/20 | 10/10 | 20/20 |
+| catalog (21) | **0/42** | 42/42 | 21/21 | 27/42 ¹ |
+| companies (8) | 8/8 | 8/8 | 8/8 | 16/16 |
+| lookup (1) | 1/1 | 1/1 | 1/1 | 2/2 |
+| **total** | **26/71** | **71/71** | **40/40** | **65/80** |
+
+¹ b.ai aborted one reply ("Model output became abnormal while generating a JSON response"). On the next
+step, the agent declared the list complete from the first screen and stopped at 6/21. The rule doesn't apply
+to this task. The repeat scored 21/21.
+
+### Mean seconds per task
+
+| Task | Old, Fast on | Old, Fast off | New | New + rule |
+|---|---|---|---|---|
+| people | 531 | 1705 | 1403 | 1396 |
+| catalog | 974 | 835 | 311 | 532 ¹ |
+| companies | 393 | 315 | 422 | 231 |
+| lookup | 16 | 23 | 22 | 55 |
+
+### What the numbers say
+
+1. **Fast mode was the accuracy problem.**
+   - In both catalog runs it dropped the number from every product name ("Harbor Kettle" for "Harbor Kettle 1"
+     and "Harbor Kettle 31"). It then wrote "All values were read directly from the catalog page (no
+     fabrication)".
+   - In one people run it lost three locations and its answer was cut off mid-word.
+   - Fast off got everything right, with the same models and the same pages.
+   - Fast mode is only quicker when the task is short or goes smoothly. On the catalog it was slower,
+     because it kept re-scrolling.
+2. **`save_item` didn't change accuracy at this list size.** Fast off was already 71/71.
+   - What it adds: every value is checked against the page when saved; the dashboard shows a table with
+     ⚠ for unchecked values, plus a CSV; and the list survives a cut-off final answer.
+   - Its page check catches invented values, not shortened ones. "Harbor Kettle" passes because it appears
+     inside "Harbor Kettle 1".
+   - A longer-list task (50+ items) is needed to show its effect on recall.
+3. **The skip rule removed made-up claims, not steps.**
+   - Without it, old code with Fast off claimed a made-up `experience=mid-senior` URL parameter "appeared to
+     reduce result counts (suggesting it is honored)". The site ignores unknown parameters.
+   - With it, no such claims appeared, and the agent reported the missing filter plainly.
+   - It still spent steps re-checking, so the people task hit or nearly hit the 40-step cap in every setup.
+4. **b.ai reliability is the largest source of noise.**
+   - 13 of the 17 runs that recorded it switched to the fallback model at least once.
+   - Timeouts hit on both models.
+   - One aborted reply cost a whole task.
+   - That fits Section 6: 19 of 45 steps with no reply on a ~6k-token page.
+
+### Scorer limits
+
+- A correct remark after a list (e.g. "product #60 is the last item") counts as a wrong answer. That's the
+  one "wrong" in old Fast off.
+- Names the agent lists as excluded don't count, whether under a heading or in the same sentence (tested in
+  `test_bench_scorer`).
+
+### Next
+
+- A 50+ item task, to measure `save_item` on long lists.
+- Timeouts of 20 s × 3 tries vs 60 s × 2, measured on this benchmark.
+- After a model error, don't accept `done` until the agent has looked at the page again.

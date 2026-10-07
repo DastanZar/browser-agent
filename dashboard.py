@@ -60,7 +60,7 @@ _ids = itertools.count(int(time.time()))
 
 
 class Run:
-    def __init__(self, task, model, fallback, follow_up=False, fast=True, watch=None, turbo=True, optimized=False):
+    def __init__(self, task, model, fallback, follow_up=False, fast=False, watch=None, turbo=True, optimized=False):
         self.id, self.task, self.model, self.fallback = next(_ids), task, model, fallback
         self.follow_up, self.fast = follow_up, fast
         self.watch = watch                      # set for digest runs
@@ -70,10 +70,12 @@ class Run:
         self.prompt, self.future, self.shot = None, None, None
         self.notion_page_id = None
         self.turbo, self.optimized = turbo, optimized
+        self.items = []                         # what the agent saved with save_item (live during the run)
 
     def public(self, full=True):
         d = {k: getattr(self, k, None) for k in ("id", "kind", "task", "model", "fallback", "follow_up", "fast", "turbo", "optimized", "status", "result", "ok",
                                                  "started", "ended", "notion_page_id")}
+        d["items"] = list(self.items[:500])
         if full:
             d.update(steps=self.steps[-200:], prompt=self.prompt, has_shot=self.shot is not None)
         return d
@@ -222,10 +224,14 @@ class Studio:
                     self.convo, self.convo_model, self.convo_fast, self.convo_turns = agent, run.model, run.fast, 0
                 if run.kind == "task":
                     self.agent = agent
+                    run.items = agent.saved_items  # same list: the dashboard shows items as they're saved
                     history = await agent.run(max_steps=MAX_STEPS)
                     self.convo_turns += 1
                     RUNS_DIR.mkdir(exist_ok=True)
-                    history.save_to_file(RUNS_DIR / f"{datetime.now():%Y%m%d-%H%M%S}-{run.id}.json")
+                    stamp = f"{datetime.now():%Y%m%d-%H%M%S}-{run.id}"
+                    history.save_to_file(RUNS_DIR / f"{stamp}.json")
+                    if run.items:
+                        (RUNS_DIR / f"{stamp}.items.json").write_text(json.dumps(run.items, indent=1), encoding="utf-8")
                     run.result = history.final_result() or "(no final answer; see the steps)"
                     run.ok = bool(history.is_successful())
                     if run.status != "stopped":
@@ -237,6 +243,7 @@ class Studio:
                 if "connect" in str(e).lower() or "websocket" in str(e).lower():
                     await self.drop_browser()  # reconnect on the next task
             finally:
+                run.items = json.loads(json.dumps(run.items))  # deep copy: a follow-up keeps changing the agent's list
                 if getattr(run, "notion_page_id", None):
                     try:
                         await asyncio.to_thread(notion_sync.finalize_task_card, run.notion_page_id, run)
@@ -434,7 +441,7 @@ async def run_task(request: Request):
         return JSONResponse({"error": "unknown model"}, status_code=400)
     if not core.api_key():
         return JSONResponse({"error": "save your b.ai API key first"}, status_code=400)
-    run = Run(task, model, fallback, follow_up=bool(body.get("follow_up")), fast=bool(body.get("fast", True)),
+    run = Run(task, model, fallback, follow_up=bool(body.get("follow_up")), fast=bool(body.get("fast", False)),
               turbo=bool(body.get("turbo", True)), optimized=bool(body.get("optimized", False)))
     studio.runs.append(run)
     await studio.queue.put(run)

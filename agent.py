@@ -11,6 +11,7 @@ LLM_VISION=0, SECRET_<NAME>=value (typed without the model seeing it: <secret>NA
 """
 import argparse
 import asyncio
+import json
 import os
 import sys
 import urllib.request
@@ -49,7 +50,9 @@ async def main():
     ap.add_argument("--chat", action="store_true", help="after each task, ask for the next one")
     ap.add_argument("--model", default=core.CONFIG["default"], choices=list(core.MODELS))
     ap.add_argument("--fallback", default=core.CONFIG["fallback"], choices=list(core.MODELS))
-    ap.add_argument("--no-fast", action="store_true", help="let the model write its full reasoning each step (slower)")
+    ap.add_argument("--fast", action="store_true", help="Browser Use flash mode: quicker, but no step-by-step checks; "
+                    "short tasks only (it lost accuracy on long ones, see docs/reviews/2026-10-07-claude-accuracy.md)")
+    ap.add_argument("--no-fast", action="store_true", help=argparse.SUPPRESS)  # old flag; full mode is now the default
     ap.add_argument("--browser", default=None, help="auto | mine | agent | <cdp url>  (default: $CDP or auto)")
     args = ap.parse_args()
     task = Path(args.file).read_text() if args.file else args.task
@@ -64,7 +67,7 @@ async def main():
     await browser.start()
     hint = await core.visible_tab_hint(browser)
     agent = core.make_agent(task + ("\n\n" + hint if hint else ""), args.model, args.fallback, browser, terminal_human,
-                            flash_mode=not args.no_fast)
+                            flash_mode=args.fast)
 
     Path("runs").mkdir(exist_ok=True)
     ok = True
@@ -75,6 +78,12 @@ async def main():
         ok = bool(history.is_successful())
         print(f"\n=== result ({'done' if ok else 'not finished'}; log: {out}) ===")
         print(history.final_result() or "(no final answer; see the log above)")
+        if agent.saved_items:
+            items_file = out.with_suffix(".items.json")
+            items_file.write_text(json.dumps(agent.saved_items, indent=1), encoding="utf-8")
+            print(f"\n=== saved items: {len(agent.saved_items)} (also in {items_file}; ⚠ = not found on the page) ===")
+            for it in agent.saved_items:
+                print("  " + "  |  ".join(f"{v}{' ⚠' if k in it['unverified'] else ''}" for k, v in it["fields"].items()))
         if not args.chat:
             break
         nxt = (await asyncio.to_thread(input, "\nnext task (blank to quit)> ")).strip()
