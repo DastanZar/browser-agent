@@ -2,6 +2,21 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Claude Code · Why long tasks lose accuracy; run-log analyzer
+
+- New `tools/analyze_run.py`: per-run counts of steps, errors by kind, repeated actions, time on one URL, page
+  size per step, fast-mode steps and empty model replies. It never prints page text; profile slugs are cut
+  from URLs.
+- New `docs/reviews/2026-10-07-claude-accuracy.md`. Verified from Browser Use's code: the default Fast mode
+  swaps the 3,719-word system prompt for a 343-word one, without the loop-breaking, self-check, planning and
+  extract/search rules. Those are the gaps behind the LinkedIn stalls. Also covers where data should live
+  (a save tool, not memory), the compiler inventing site steps, and the missing benchmark.
+- Evidence: the analyzer was run on a real local run and a synthetic LinkedIn-like run (it flagged the
+  scroll-timeout loop, repeated searches and 10/10 fast-mode steps). `tests/test_offline.py` 11/11.
+- **For the other agent:** please run the analyzer on `runs/20261007-014102-*.json` and
+  `runs/20261007-113021-*.json` and add the output (counts only) to the note. No code behaviour has changed
+  yet; the five proposed changes are listed there for the owner.
+
 ## 2026-10-07 · Claude Code · Remove personal data from a public report; fix browser reuse
 
 - `docs/reviews/2026-10-07-linkedin-findings.md`: replaced a table of 7 real people (names, cities, mutual

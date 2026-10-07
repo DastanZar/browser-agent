@@ -1,0 +1,96 @@
+# Why long tasks (the LinkedIn runs) go wrong, and what to change (Claude Code, 2026-10-07)
+
+**Sources.**
+- The two LinkedIn run logs aren't in the repo (`runs/` is git-ignored), so this is based on:
+  - Browser Use 0.13.10's own code;
+  - our `core.py`, `dashboard.py` and `turbo.py`;
+  - `docs/reviews/2026-10-07-linkedin-findings.md`.
+- Causes 1–3 are verified from code. Causes 4–5 need the logs.
+- `tools/analyze_run.py` checks all of them on a real run:
+  `python tools/analyze_run.py runs/<file>.json --steps`. It prints counts, actions and URLs (profile slugs cut
+  out); check its output before pasting anywhere public.
+
+## Causes, most likely first
+
+### 1. Fast mode is on for every task, and it removes the agent's self-checks (verified)
+
+- The dashboard's **Fast** box is ticked by default (`dashboard.html`, `id="fast" checked`). It passes
+  `flash_mode=True` to Browser Use.
+- What flash mode does in 0.13.10:
+  - It swaps the 3,719-word system prompt (`system_prompts/system_prompt.md`) for a 343-word one
+    (`system_prompt_flash.md`).
+  - It drops `thinking`, `evaluation_previous_goal` and `next_goal` from the output (`agent/views.py:73`).
+  - It switches planning off: "Flash mode strips plan fields from the output schema, so planning is
+    structurally impossible" (`agent/service.py:241`).
+- What the full prompt has and the flash one doesn't, matched to the stalls in the LinkedIn report:
+
+| Rule only in the full prompt | Stall it would have prevented |
+|---|---|
+| "If you are on the same URL for 3+ steps without progress, or the same action fails 2–3 times, try a different approach. Track what you have tried" | 15+ steps retrying Boolean search variants (cause A) |
+| Judge every previous action as success/failure; "never assume an action succeeded" | Re-opening the filter drawer for a facet that doesn't exist (cause B) |
+| "Prefer `search_page` over scrolling"; `find_elements` and `extract` read the whole page without scrolling | Scroll timeouts on the results list (cause C) |
+| Planning with a todo list for tasks of more than 10 steps | Losing track across companies and pages |
+
+- **This one is on me.** I set Fast as the default after measuring it 2–4× faster on 1–3 step tasks (a YouTube
+  list, a form). I never tested it on a 40-step task, and that's where it hurts.
+
+### 2. The data has nowhere safe to live (verified)
+
+- In flash mode, the only place to carry results is the `memory` field, which the prompt limits to "up to 5
+  sentences". 20–30 people × name/title/location don't fit in it, so entries get dropped or blurred as steps go
+  by.
+- The new "keep candidates in working memory, don't write files" policy (402bb5f) removed the other place they
+  could go. The CSV thrash it was meant to fix was real, but the cure took away the only durable store.
+- The digest already solved this. `save_post` hands each item to Python the moment it's seen, the text is
+  checked against the captured page text (`digest.verify`), and nothing is read back into the context. It scored
+  8/8 verbatim, against fabrications before.
+
+### 3. The prompt compiler invents site mechanics (verified from the report)
+
+- Causes A and B in the report both came from the task prompt: the parenthesised Boolean query, and "filter by
+  Experience level: Mid-Senior".
+- The compiler (`turbo.compile_prompt`) is a fast model that writes step-by-step UI instructions for a site it
+  has never seen. The browsing agent then treats them as requirements and keeps trying to satisfy them.
+- Its old template literally contained that Boolean example. The new one still asks for phases and exact
+  "buttons/form elements to interact with".
+
+### 4. Huge page states to a flash model (needs the logs)
+
+- The report says about 35k tokens per step. Long inputs make small models worse at choosing the right element,
+  and slower. The analyzer prints the real median and max per run.
+- Pages can be read with `&page=2` in the URL instead of by scrolling.
+
+### 5. Run endings and follow-ups (needs the logs)
+
+- `max_failures=4`: four failed actions in a row (e.g. scroll timeouts) end the run. The analyzer shows whether
+  that's how these runs ended.
+- If the "40+ turns" were follow-up messages, `add_new_task` keeps the whole conversation in one agent, so every
+  turn carries all earlier pages and history.
+
+## The method problem underneath: nothing is measured
+
+- "Accuracy" is never defined. There's no list of the right answers, so neither recall nor precision is known.
+- Each change is judged on one 40-step live run on LinkedIn. That is slow (about 30 s a step), can't be
+  repeated (the results change), and puts the owner's account at risk.
+- Commit 402bb5f changed five things at once: default model, timeouts, retries, compiler prompt and policy. No
+  run can say which helped.
+
+## What to change, in order
+
+1. **Turn Fast off by default for tasks.** Keep it as an option for short ones. Digests stay as measured.
+2. **Add a generic `save_item(fields)` tool.** Same design as `save_post`: Python keeps the list, removes
+   duplicates and checks each item against the page text; it's never read back into the context. Remove the
+   "keep it in working memory" policy line.
+3. **The compiler states goals, limits and "done when …", never UI steps.** Facts about a site (e.g. "People
+   search has no experience-level filter") go in a short per-domain notes file, written only from what runs
+   actually observed.
+4. **A local benchmark before any live run.**
+   - 6–8 fixed tasks against local copies of hard page types, with made-up names:
+     - a results list with pagination and a filter that doesn't exist;
+     - a virtualised infinite list;
+     - a form with a confirm step.
+   - Each task has a scorer: items right/wrong/missed, steps, seconds.
+   - Every change runs the benchmark before and after; one change per commit.
+   - This is how the digest went from 305 s with invented posts to 80 s at 8/8 verbatim.
+5. **Run `tools/analyze_run.py` on the two LinkedIn logs** and add the output to this note, to confirm or
+   rule out causes 4 and 5.
