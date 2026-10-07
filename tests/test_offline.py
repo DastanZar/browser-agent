@@ -172,6 +172,21 @@ def test_prompt_optimizer_specifies_goals_not_click_steps():
     assert "Limits & Safety:" in prompt
 
 
+def test_bench_scorer():
+    sys.path.insert(0, str(ROOT / "bench"))
+    import run as bench
+    spec = bench.tasks("http://x")["people"]
+    rows = "\n".join(f"{i}. {a['name']} — {a['title']} — {a['location']}" for i, a in enumerate(spec["answer"], 1))
+    excluded = "\n\nEXCLUSIONS (not current staff):\n- Theo Nakamura — Recruiter (formerly Acme Mobility)\n- Hugo Lambert — Recruiting Operations Analyst"
+    assert bench.score(spec, rows + excluded, [])["wrong"] == 0                  # explained exclusions aren't answers
+    assert bench.score(spec, rows + "\n11. Theo Nakamura — Recruiter", [])["wrong"] == 1
+    inline = rows + "\nTheo Nakamura (Recruiter) was excluded because he is no longer at Acme Mobility."
+    assert bench.score(spec, inline, [])["wrong"] == 0
+    bad = bench.score(spec, "", [{"fields": {"name": "Mira Okafor", "title": "Technical Recruiter", "location": "Austin, TX"}},
+                                 {"fields": {"name": "Jane Fakename", "title": "Recruiter"}}])
+    assert (bad["right"], bad["partial"], bad["invented"]) == (0, 1, 1)          # wrong field; invented person
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

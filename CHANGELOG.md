@@ -2,6 +2,25 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-07 · Claude Code · Local benchmark: scored tasks on a test site with made-up data
+
+- `bench/testsite.py`: a local site with the page types that broke real runs:
+  - a people search that returns "No results" for quoted or parenthesised queries, has 4 result pages, and a
+    filter drawer with no "Experience level";
+  - a virtualised product list (only on-screen rows exist);
+  - company detail pages;
+  - a one-page lookup.
+  All names are invented.
+- `bench/run.py`: runs the tasks with real models in headless Chromium and scores the saved items and final
+  answer against answer keys (right / partial / wrong / invented, steps, seconds, fallback used).
+  - `--rescore` re-scores saved answers and prints a per-configuration summary.
+  - `BENCH_RESULTS` lets two checkouts write to one results file.
+  - Results go to `bench/results/` (git-ignored).
+- AGENTS.md: agent-loop changes must be benchmarked before and after, one change at a time.
+- Evidence: `test_bench_scorer` pins the scorer (explained exclusions aren't answers; wrong fields and invented
+  people are caught). 24 benchmark runs so far; results in the next entry. `python tests/test_offline.py` all
+  pass.
+
 ## 2026-10-07 · Antigravity · Prompt optimizer refactored to goals/done-conditions; LinkedIn run log metrics added
 
 - Completed Decision B6 task #3: Refactored `turbo.PROMPT_OPTIMIZER_SYSTEM_PROMPT` to output high-level target entry points, entity criteria, quantity limits, and explicit `Done When:` completion conditions instead of hallucinating click-by-click UI sequences or non-existent website filter facets.

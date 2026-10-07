@@ -9,7 +9,9 @@ undoing each other's work. Read it at the start of every session.
    and `docs/reviews/` since your last session.
 2. **Change, then prove it:**
    - Run `python tests/test_offline.py`; all tests must pass.
-   - If you touched the agent loop, run a real task too, and record the numbers.
+   - If you touched the agent loop (prompts, policy, tools, models, timeouts), run the benchmark before and after,
+     one change at a time: `python bench/run.py --model <id> [--fast] --tag <name>`. Put both score lines in
+     the CHANGELOG. Live sites come after the benchmark, not instead of it.
 3. **Log it:** add an entry at the top of `CHANGELOG.md` (format below) in the same commit as the change.
 4. **Push small:** one topic per commit, a clear message, `git pull --rebase` again, then `git push origin main`.
    - Never force-push.
@@ -61,4 +63,6 @@ undoing each other's work. Read it at the start of every session.
 | `notion_sync.py` | Optional Notion Kanban sync |
 | `agent.py` | Terminal version |
 | `tests/test_offline.py` | Regression tests (no network, no key) |
+| `bench/` | Benchmark: local test site with made-up data (`testsite.py`) + scored tasks (`run.py`); results in `bench/results/` (git-ignored) |
+| `tools/analyze_run.py` | Where a run's steps went: errors, loops, page size, fast mode |
 | `docs/ENGINEERING.md` | Why things are the way they are, with benchmarks and test logs |
