@@ -2,6 +2,12 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Muse Spark · Policy B: search once via URL, never retype
+
+- `core.POLICY`: with URL-searchable keywords navigate to the search URL once instead of retyping in the box; simplify once on empty, then move on. Targets run 1791437835 steps 3-17 (~500s search thrash). Guarded: never overrides this-page/tab tasks.
+- Evidence: `python tests/test_offline.py` (new `test_policy_b_search_once_directly`).
+- Rollback: `git revert` this commit or `git reset --hard pre-batch5-20261008-d4b1823`.
+
 ## 2026-10-08 · Muse Spark · Policy A: results via save_item, files only on request
 
 - `core.POLICY`: results live in `save_item`/`save_post`, never `write_file`/`read_file` memory loops; files only when task explicitly asks. Scoped so report-to-file tasks still work. Targets run 1791437835's 7 stray `write_file` calls.

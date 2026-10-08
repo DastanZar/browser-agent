@@ -68,6 +68,9 @@ COLLECTING RESULTS
   results, open the next page (a page link or a page= address) rather than scrolling.
 - Results live in save_item/save_post, never in files: do not use write_file/read_file to remember
   results. Files only when the task explicitly asks for a file.
+- Search once, directly: if the task gives keywords for a site with URL search (e.g. LinkedIn people
+  `?keywords=`), navigate to that search URL once instead of typing in the search box repeatedly.
+  Never type the same query twice; if it returns nothing, simplify once and move on.
 
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """

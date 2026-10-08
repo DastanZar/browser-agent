@@ -210,6 +210,11 @@ def test_policy_a_file_results_scoped():
     assert "Files only when the task explicitly asks for a file" in core.POLICY
 
 
+def test_policy_b_search_once_directly():
+    assert "Search once, directly" in core.POLICY
+    assert "Never type the same query twice" in core.POLICY
+
+
 def test_bench_scorer():
     sys.path.insert(0, str(ROOT / "bench"))
     import run as bench
