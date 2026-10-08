@@ -2,6 +2,13 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Muse Spark · Keep agent Chrome logins: remove silent profile sync on launch
+
+- `core.open_agent_chrome`: removed auto `sync_user_profile()` on every start. It copied `Local State` (new key) while `Cookies` stayed locked by personal Chrome, so nothing decrypted and sign-in logins were wiped next launch. Manual Sync (`/api/profile/sync`, Chrome closed) still works.
+- Evidence: `python tests/test_offline.py` 15/15 pass. No benchmark (Chrome launch path, not prompts/policy/tools/models/timeouts).
+- Rollback (local, not yet pushed): `git reset --hard pre-fix-login-20261008-c274e3e` or branch `rollback/pre-fix-login-20261008`.
+- For the other agent: first launch after this keeps existing `~/.agent-chrome` as-is; use sign-in window + X-close to add logins.
+
 ## 2026-10-08 · Muse Spark · Fix turbo.extract_target_url NameError crash on generic tasks
 
 - `turbo.py`: defined missing `text_lower = text.lower()`; step 4 (COMMON_DOMAINS substring + this-page guard) previously threw `NameError` for any task without explicit URL/domain/phrase (e.g. "Find 10 tech recruiters").

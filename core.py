@@ -360,11 +360,9 @@ def open_agent_chrome(url=None):
     if not port_open(AGENT_PORT):
         if signin_open():  # one Chrome per profile, and it must close normally to keep the login
             raise RuntimeError("Close the sign-in Chrome window (its X button) so it saves your logins, then try again.")
-        # Auto-import logins from personal Chrome profile whenever accessible
-        try:
-            sync_user_profile()
-        except Exception:
-            pass
+        # No silent sync here: copying Local State without Cookies (locked while
+        # personal Chrome is open) breaks decryption and wipes sign-in logins.
+        # Use manual Sync button (/api/profile/sync) with Chrome closed instead.
         _spawn([*_base_args(), f"--remote-debugging-port={AGENT_PORT}", "--remote-debugging-address=127.0.0.1",
                 url or "about:blank"])
         for _ in range(60):
