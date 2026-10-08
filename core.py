@@ -73,6 +73,8 @@ COLLECTING RESULTS
   Never type the same query twice; if it returns nothing, simplify once and move on.
 - Batch approvals: when several sends need approval, present every exact note text in ONE ask round
   (still one confirm per send), instead of one roundtrip per item.
+- LinkedIn Connect chain: More -> Connect -> Add note -> Send with no scroll or navigation mid-dialog.
+  Re-read the dialog after each step (indices go stale); after 3+ retries on one profile, stop and report.
 
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """

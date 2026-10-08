@@ -220,6 +220,11 @@ def test_policy_c_batch_approvals():
     assert "still one confirm per send" in core.POLICY
 
 
+def test_policy_d_connect_chain():
+    assert "LinkedIn Connect chain" in core.POLICY
+    assert "after 3+ retries on one profile, stop and report" in core.POLICY
+
+
 def test_bench_scorer():
     sys.path.insert(0, str(ROOT / "bench"))
     import run as bench
