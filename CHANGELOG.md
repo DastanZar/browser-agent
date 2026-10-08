@@ -2,6 +2,12 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Muse Spark · Policy A: results via save_item, files only on request
+
+- `core.POLICY`: results live in `save_item`/`save_post`, never `write_file`/`read_file` memory loops; files only when task explicitly asks. Scoped so report-to-file tasks still work. Targets run 1791437835's 7 stray `write_file` calls.
+- Evidence: `python tests/test_offline.py` (new `test_policy_a_file_results_scoped`).
+- Rollback: `git revert` this commit or `git reset --hard pre-batch5-20261008-d4b1823`.
+
 ## 2026-10-08 · Muse Spark · Keep agent Chrome logins: remove silent profile sync on launch
 
 - `core.open_agent_chrome`: removed auto `sync_user_profile()` on every start. It copied `Local State` (new key) while `Cookies` stayed locked by personal Chrome, so nothing decrypted and sign-in logins were wiped next launch. Manual Sync (`/api/profile/sync`, Chrome closed) still works.

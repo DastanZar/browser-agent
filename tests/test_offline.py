@@ -205,6 +205,11 @@ def test_save_item_checks_values_against_the_page():
     assert items[1]["unverified"] == ["location", "name"]
 
 
+def test_policy_a_file_results_scoped():
+    assert "Results live in save_item/save_post, never in files" in core.POLICY
+    assert "Files only when the task explicitly asks for a file" in core.POLICY
+
+
 def test_bench_scorer():
     sys.path.insert(0, str(ROOT / "bench"))
     import run as bench

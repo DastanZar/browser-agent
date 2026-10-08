@@ -66,6 +66,8 @@ COLLECTING RESULTS
   hidden settings or made-up URL parameters for it.
 - Prefer search_page, find_elements or extract over repeated scrolling to read long pages; for paged
   results, open the next page (a page link or a page= address) rather than scrolling.
+- Results live in save_item/save_post, never in files: do not use write_file/read_file to remember
+  results. Files only when the task explicitly asks for a file.
 
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """
