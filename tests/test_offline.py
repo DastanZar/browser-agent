@@ -220,6 +220,19 @@ def test_bench_scorer():
     assert (bad["right"], bad["partial"], bad["invented"]) == (0, 1, 1)          # wrong field; invented person
 
 
+def test_extract_target_url_no_crash_and_respects_local_context():
+    import turbo
+    # Previously crashed with NameError: text_lower not defined when no URL/domain/phrase matched.
+    assert turbo.extract_target_url("Find 10 tech recruiters and list them") is None
+    assert turbo.extract_target_url("") is None
+    assert turbo.extract_target_url(None) is None
+    assert turbo.extract_target_url("Open https://www.youtube.com/@veritasium/videos and list") == \
+        "https://www.youtube.com/@veritasium/videos"
+    assert turbo.extract_target_url("check linkedin for hiring managers") == "https://www.linkedin.com"
+    # Local tab context must not trigger a navigation away.
+    assert turbo.extract_target_url("Summarise this page about github") is None
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

@@ -2,6 +2,13 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Muse Spark · Fix turbo.extract_target_url NameError crash on generic tasks
+
+- `turbo.py`: defined missing `text_lower = text.lower()`; step 4 (COMMON_DOMAINS substring + this-page guard) previously threw `NameError` for any task without explicit URL/domain/phrase (e.g. "Find 10 tech recruiters").
+- Evidence: `python tests/test_offline.py` 15/15 pass (14 existing + new `test_extract_target_url_no_crash_and_respects_local_context`).
+- Rollback: `git reset --hard pre-opt-20261008-e91dc9f` or `git revert` this commit; rollback branch `rollback/pre-opt-20261008` pushed to origin.
+- For the other agent: pre-nav path now safe; no benchmark needed (crash fix, no behavior change on previously working inputs).
+
 ## 2026-10-08 · Antigravity · Fix Windows asyncio ProactorBasePipeTransport WinError 10054 crash in dashboard
 
 - Windows proactor loop resilience: abrupt client socket closures (e.g. browser tab closing or network disconnects) previously caused `_ProactorBasePipeTransport._call_connection_lost` to throw `ConnectionResetError: [WinError 10054]`, terminating the uvicorn event loop. Patched `_call_connection_lost` on Windows to silence `ConnectionResetError` and `OSError`.

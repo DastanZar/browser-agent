@@ -67,6 +67,7 @@ def extract_target_url(task: str) -> str | None:
     if not task:
         return None
     text = task.strip()
+    text_lower = text.lower()
 
     # 1. Look for explicit http/https URLs
     m_url = re.search(r'https?://[^\s<>"\')`]+', text)
