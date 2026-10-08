@@ -215,6 +215,11 @@ def test_policy_b_search_once_directly():
     assert "Never type the same query twice" in core.POLICY
 
 
+def test_policy_c_batch_approvals():
+    assert "Batch approvals" in core.POLICY
+    assert "still one confirm per send" in core.POLICY
+
+
 def test_bench_scorer():
     sys.path.insert(0, str(ROOT / "bench"))
     import run as bench

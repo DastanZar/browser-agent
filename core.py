@@ -71,6 +71,8 @@ COLLECTING RESULTS
 - Search once, directly: if the task gives keywords for a site with URL search (e.g. LinkedIn people
   `?keywords=`), navigate to that search URL once instead of typing in the search box repeatedly.
   Never type the same query twice; if it returns nothing, simplify once and move on.
+- Batch approvals: when several sends need approval, present every exact note text in ONE ask round
+  (still one confirm per send), instead of one roundtrip per item.
 
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """

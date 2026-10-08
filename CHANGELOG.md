@@ -2,6 +2,12 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Muse Spark · Policy C: batch approval rounds, gate unchanged
+
+- `core.POLICY`: several sends = every exact note in ONE ask round, still one `confirm` per send. Gate code untouched (exact-index). Targets run 1791437835's ask-timeout-retry (steps 33-34). Research tasks unaffected (never hit ask/confirm).
+- Evidence: `python tests/test_offline.py` (new `test_policy_c_batch_approvals`).
+- Rollback: `git revert` this commit or `git reset --hard pre-batch5-20261008-d4b1823`.
+
 ## 2026-10-08 · Muse Spark · Policy B: search once via URL, never retype
 
 - `core.POLICY`: with URL-searchable keywords navigate to the search URL once instead of retyping in the box; simplify once on empty, then move on. Targets run 1791437835 steps 3-17 (~500s search thrash). Guarded: never overrides this-page/tab tasks.
