@@ -2,6 +2,12 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Antigravity · Fix Windows asyncio ProactorBasePipeTransport WinError 10054 crash in dashboard
+
+- Windows proactor loop resilience: abrupt client socket closures (e.g. browser tab closing or network disconnects) previously caused `_ProactorBasePipeTransport._call_connection_lost` to throw `ConnectionResetError: [WinError 10054]`, terminating the uvicorn event loop. Patched `_call_connection_lost` on Windows to silence `ConnectionResetError` and `OSError`.
+- Evidence: `tests/test_offline.py` all 14 tests pass cleanly; dashboard server remains active and listening across abrupt browser disconnects.
+- For the other agent: safe Windows-specific proactor transport patch added at top of `dashboard.py`.
+
 ## 2026-10-07 · Claude Code · Fast mode off by default; `save_item` tool; skip-missing-instructions rule
 
 - **Fast mode is off by default** (dashboard checkbox unticked; `agent.py --fast` to opt in; digests keep
