@@ -75,6 +75,8 @@ COLLECTING RESULTS
   (still one confirm per send), instead of one roundtrip per item.
 - LinkedIn Connect chain: More -> Connect -> Add note -> Send with no scroll or navigation mid-dialog.
   Re-read the dialog after each step (indices go stale); after 3+ retries on one profile, stop and report.
+- Tab hygiene on lists: after save_item on a detail/profile page, go back to the list (or close the
+  tab) before the next item, so page states stay small. Keep the page only when a follow-up needs it.
 
 FINISH with: what you did, what you changed (if anything), defaults you chose, what you could not do.
 """

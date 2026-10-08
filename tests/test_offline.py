@@ -225,6 +225,11 @@ def test_policy_d_connect_chain():
     assert "after 3+ retries on one profile, stop and report" in core.POLICY
 
 
+def test_policy_e_tab_hygiene():
+    assert "Tab hygiene on lists" in core.POLICY
+    assert "Keep the page only when a follow-up needs it" in core.POLICY
+
+
 def test_bench_scorer():
     sys.path.insert(0, str(ROOT / "bench"))
     import run as bench

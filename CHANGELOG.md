@@ -2,6 +2,12 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-08 · Muse Spark · Policy E: tab hygiene keeps page states small
+
+- `core.POLICY`: after `save_item` on a detail/profile page, go back to list (or close tab) before next item; keep page only when follow-up needs it. Targets run 1791437835's 2.6k->17k token bloat (median 9k). Follow-up-continuation tasks exempt by wording.
+- Evidence: `python tests/test_offline.py` (new `test_policy_e_tab_hygiene`). Full `bench/run.py` people-suite deferred (prompt-only batch, each commit revertable).
+- Rollback: `git revert` this commit or `git reset --hard pre-batch5-20261008-d4b1823` (tag + `rollback/pre-batch5-20261008`).
+
 ## 2026-10-08 · Muse Spark · Policy D: LinkedIn Connect chain, stop after 3 retries
 
 - `core.POLICY`: More -> Connect -> Add note -> Send with no mid-dialog scroll/navigate; re-read dialog each step; stop after 3+ retries on one profile. Prompt wording only, gate untouched. Targets run 1791437835's 27-step dialog loop (steps 33-56). Research tasks never click Connect: unaffected.
