@@ -14,6 +14,7 @@ import subprocess
 import time
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -84,10 +85,17 @@ FINISH with: what you did, what you changed (if anything), defaults you chose, w
 
 # ---------------------------------------------------------------- models
 
+def provider():
+    """b.ai by default; LLM_PROVIDER=openrouter uses the same models through OpenRouter (benchmarks, or a backup)."""
+    name = os.environ.get("LLM_PROVIDER", "")
+    return name, CONFIG.get("providers", {}).get(name) or CONFIG
+
+
 def api_key():
-    key = os.environ.get(CONFIG["key_env"])
+    _, p = provider()
+    key = os.environ.get(p["key_env"])
     if not key:
-        path = Path(os.path.expanduser(CONFIG["key_file"]))
+        path = Path(os.path.expanduser(p["key_file"]))
         key = path.read_text().strip() if path.exists() else ""
     return key
 
@@ -103,17 +111,58 @@ def save_api_key(key):
         pass
 
 
+@dataclass
+class HedgedChatOpenAI(ChatOpenAI):
+    """Sends the same request a second time if the first hasn't answered after `hedge_after` seconds, and takes
+    whichever answers first ("hedged requests"). b.ai leaves about 1 request in 7 hanging until the timeout
+    while the rest answer in 2-12 s; without a hedge every hang costs the full timeout (60 s)."""
+    hedge_after: float | None = None
+
+    async def ainvoke(self, messages, output_format=None, **kwargs):
+        call = ChatOpenAI.ainvoke
+        if not self.hedge_after:
+            return await call(self, messages, output_format, **kwargs)
+        first = asyncio.ensure_future(call(self, messages, output_format, **kwargs))
+        done, _ = await asyncio.wait({first}, timeout=self.hedge_after)
+        if done:
+            return first.result()
+        self.hedges = getattr(self, "hedges", 0) + 1
+        pending = {first, asyncio.ensure_future(call(self, messages, output_format, **kwargs))}
+        error = None
+        try:
+            while pending:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    if task.exception() is None:
+                        return task.result()
+                    error = task.exception()
+            raise error
+        finally:
+            for task in pending:
+                task.cancel()
+
+
+def hedge_after(model_id):
+    """Seconds before a duplicate request goes out: about the slow end of a normal answer for this model.
+    LLM_HEDGE=0 turns hedging off."""
+    if os.environ.get("LLM_HEDGE", "1") == "0":
+        return None
+    return float(os.environ.get("LLM_HEDGE_AFTER") or MODELS[model_id].get("hedge_after", 12))
+
+
 def make_llm(model_id):
     if model_id not in MODELS:
         raise ValueError(f"unknown model {model_id!r}; choose from {list(MODELS)}")
     key = api_key()
     if not key:
         raise RuntimeError(f"no API key: set {CONFIG['key_env']} or save it in the dashboard")
+    name, p = provider()
+    api_model = MODELS[model_id].get(name, model_id) if name else model_id
     json_mode = MODELS[model_id]["json_mode"]
     # About 1 in 7 b.ai requests never answers (measured: 3/20 hung while the rest took 2-3 s), so each
     # request gets a short timeout and is retried at once, instead of one long wait per hang.
     # Reasoning models spend part of the budget thinking; 4096 (the default) truncated replies in tests.
-    return ChatOpenAI(model=model_id, base_url=os.environ.get("LLM_BASE_URL", CONFIG["base_url"]), api_key=key, temperature=0.2,
+    return HedgedChatOpenAI(hedge_after=hedge_after(model_id), model=api_model, base_url=os.environ.get("LLM_BASE_URL", p["base_url"]), api_key=key, temperature=0.2,
                       max_completion_tokens=12000, timeout=request_timeout(model_id), max_retries=1,
                       dont_force_structured_output=not json_mode, add_schema_to_system_prompt=not json_mode)
 
@@ -128,8 +177,11 @@ _URL = re.compile(r"(?<![@\w.])((?:https?://)?(?:[a-z0-9-]+\.)+(?:com|org|net|io
                   r"(?:/[^\s<>\"')\]]*)?)", re.I)
 
 
+_EXPLICIT = re.compile(r"\b(https?://[^\s<>\"')\]]+)", re.I)  # any host, e.g. http://127.0.0.1:8000/page
+
+
 def start_url(task):
-    m = _URL.search(task or "")
+    m = _EXPLICIT.search(task or "") or _URL.search(task or "")
     if not m:
         return None
     url = m.group(1).rstrip(".,;:!?*_)]'\"`")

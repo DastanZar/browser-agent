@@ -851,6 +851,10 @@ details[open] summary::before {
           <input type="checkbox" id="turbo" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
           <span><b>Turbo Mode (Sandbox)</b>: instant URL pre-navigation &amp; tracker blocking</span>
         </label>
+        <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;" title="Read-only tasks with a URL: Python reads the pages and the model answers in 1–3 calls; hands over to the full agent when it needs clicks">
+          <input type="checkbox" id="quick" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
+          <span><b>Quick read</b>: read-only tasks with a URL are answered from the pages, no clicking</span>
+        </label>
         <label style="margin:0; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;">
           <input type="checkbox" id="followUp" checked style="width:15px; height:15px; margin:0; accent-color:var(--brand-600); cursor:pointer;">
           <span><b>Follow-up</b>: continue conversation (preserves context &amp; page)</span>
@@ -1239,7 +1243,7 @@ function downloadCsv(r) {
 }
 
 function renderList(el, rows, empty, withCancel) {
-  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id, r.turbo, r.optimized, (r.items || []).length]));
+  const key = JSON.stringify((rows || []).map(r => [r.id, r.status, r.result, r.notion_page_id, r.turbo, r.optimized, r.path, (r.items || []).length]));
   if (el.dataset.lastKey === key) return;
 
   const openIds = new Set();
@@ -1251,7 +1255,7 @@ function renderList(el, rows, empty, withCancel) {
   el.dataset.lastKey = key;
   el.innerHTML = rows.length ? rows.map((r) => `<li data-id="${r.id}" data-task="${esc(r.task)}">
     <div class="t">${esc(r.task)}</div>
-    <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.turbo ? ' &bull; <span style="color:#0284C7;font-weight:700;font-size:11px;">⚡ TURBO</span>' : ''}${r.optimized ? ' &bull; <span style="color:#7C3AED;font-weight:700;font-size:11px;">✨ OPTIMIZED</span>' : ''}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
+    <div class="muted" style="margin-top:4px"><span class="status ${r.status}">${r.status}</span> &bull; ${esc(r.model)}${r.turbo ? ' &bull; <span style="color:#0284C7;font-weight:700;font-size:11px;">⚡ TURBO</span>' : ''}${r.optimized ? ' &bull; <span style="color:#7C3AED;font-weight:700;font-size:11px;">✨ OPTIMIZED</span>' : ''}${r.path ? ` &bull; <span style="font-size:11px;">${esc(r.path)}</span>` : ''}${r.started ? " &bull; " + new Date(r.started * 1000).toLocaleTimeString() : ""}
     ${withCancel ? ` &bull; <a href="#" data-cancel="${r.id}" style="color:var(--status-rose-text);font-weight:600;text-decoration:none">Cancel</a>` : (r.notion_page_id ? ` &bull; <span style="color:var(--brand-600);font-weight:600;font-size:11px;">Synced to Notion</span>` : ` &bull; <a href="#" data-sync="${r.id}" style="color:var(--brand-600);font-weight:600;text-decoration:none;font-size:11px;">Sync to Notion</a>`)}</div>
     ${r.result ? `<details ${openIds.has(String(r.id)) ? 'open' : ''}><summary>View Execution Summary</summary><div class="result">${esc(r.result)}</div></details>` : ""}
     ${itemsTable(r)}</li>`).join("")
@@ -1402,6 +1406,7 @@ async function dispatchTask(browserMode) {
       follow_up: $("followUp").checked,
       fast: $("fast").checked,
       turbo: $("turbo").checked,
+      quick: $("quick").checked,
       optimized: isPromptOptimized,
       browser_mode: browserMode
     });

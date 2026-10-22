@@ -145,6 +145,19 @@ the agent summarising your notifications or email instead.
   taken: "Not taking screenshot for empty page"). Ad blocking might trim part of those 7 s, but it can also break
   pages, so it's left out.
 
+## Speed, part 2: fewer model calls, not faster ones (Oct 22)
+
+Nearly all of a task's time is spent waiting for the model, one call per step. So the fix is fewer calls, calls
+made at the same time, and no waiting on hung calls:
+- **Quick read** (`quickread.py`): read-only tasks with a URL are answered from page text that Python collects:
+  every row of a virtualised list, and detail pages opened 4 at a time. That takes 1–3 model calls instead of
+  10–40 agent steps. It hands over to the agent when clicks are needed. On the benchmark it took companies from
+  120 s to 12–36 s, and catalog from 7/21 to 21/21 rows (numbers in CHANGELOG, free model, one run each).
+- **Hedged requests** (`core.HedgedChatOpenAI`): a second copy of a call goes out after 12 s, and the first answer
+  wins. In a simulation of b.ai's 1-in-7 hangs, the mean call time fell from 14.5 s to 5.9 s.
+- Not done: a cache of recorded flows per site (`replay.mjs` already replays hand-written ones), and moving the
+  agent's own extraction onto the quick reader.
+
 ## Moving to another computer (e.g. work → home)
 
 You don't need an installer for your own machines:

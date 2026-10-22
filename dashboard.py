@@ -48,6 +48,7 @@ import socket
 
 import core
 import digest
+import quickread
 import notion_sync
 import turbo
 
@@ -73,7 +74,7 @@ _ids = itertools.count(int(time.time()))
 
 
 class Run:
-    def __init__(self, task, model, fallback, follow_up=False, fast=False, watch=None, turbo=True, optimized=False):
+    def __init__(self, task, model, fallback, follow_up=False, fast=False, watch=None, turbo=True, optimized=False, quick=True):
         self.id, self.task, self.model, self.fallback = next(_ids), task, model, fallback
         self.follow_up, self.fast = follow_up, fast
         self.watch = watch                      # set for digest runs
@@ -83,10 +84,12 @@ class Run:
         self.prompt, self.future, self.shot = None, None, None
         self.notion_page_id = None
         self.turbo, self.optimized = turbo, optimized
+        self.quick = quick                      # try a read-only quick read before the agent
+        self.path = None                        # how it ran: "quick", "quick+agent" or "agent"
         self.items = []                         # what the agent saved with save_item (live during the run)
 
     def public(self, full=True):
-        d = {k: getattr(self, k, None) for k in ("id", "kind", "task", "model", "fallback", "follow_up", "fast", "turbo", "optimized", "status", "result", "ok",
+        d = {k: getattr(self, k, None) for k in ("id", "kind", "task", "model", "fallback", "follow_up", "fast", "turbo", "optimized", "quick", "path", "status", "result", "ok",
                                                  "started", "ended", "notion_page_id")}
         d["items"] = list(self.items[:500])
         if full:
@@ -207,6 +210,32 @@ class Studio:
     def new_conversation(self):
         self.convo, self.convo_model, self.convo_fast, self.convo_turns = None, None, None, 0
 
+    async def try_quick_read(self, run):
+        """Read-only fast path. Returns the QuickResult, or None if it failed (the agent then takes over)."""
+        def progress(msg):
+            run.steps.append({"n": len(run.steps) + 1, "t": time.time(), "url": "", "goal": msg, "eval": "", "actions": []})
+        try:
+            res = await quickread.quick_read(run.task, run.model, self.browser, on_progress=progress,
+                                            fallback_id=run.fallback)
+        except Exception as e:  # noqa: BLE001  a quick-read problem never fails the run
+            progress(f"quick read failed ({type(e).__name__}); the full agent takes over")
+            return None
+        if res.status == "done":
+            run.items = res.items
+            run.result, run.ok = res.answer, True
+            RUNS_DIR.mkdir(exist_ok=True)
+            stamp = f"{datetime.now():%Y%m%d-%H%M%S}-{run.id}"
+            (RUNS_DIR / f"{stamp}.quick.json").write_text(json.dumps(
+                {"task": run.task, "answer": res.answer, "rounds": res.rounds, "pages": res.pages,
+                 "seconds": res.seconds, "model_seconds": res.model_seconds}, indent=1), encoding="utf-8")
+            if run.items:
+                (RUNS_DIR / f"{stamp}.items.json").write_text(json.dumps(run.items, indent=1), encoding="utf-8")
+            if run.status != "stopped":
+                run.status = "done"
+        else:
+            progress(f"quick read handed over to the agent after {res.rounds} round(s)")
+        return res
+
     async def worker(self):
         while True:
             run = await self.queue.get()
@@ -230,12 +259,30 @@ class Studio:
                     agent.add_new_task(run.task)  # keeps everything it saw and did in earlier tasks
                 else:
                     run.follow_up = False
-                    hint = await core.visible_tab_hint(self.browser)
-                    agent = core.make_agent(run.task + ("\n\n" + hint if hint else ""), run.model,
-                                            run.fallback, self.browser, self.ask, on_step=self.on_step,
-                                            flash_mode=run.fast, turbo_mode=run.turbo)
-                    self.convo, self.convo_model, self.convo_fast, self.convo_turns = agent, run.model, run.fast, 0
-                if run.kind == "task":
+                    task_text, quick_items, quick_done = run.task, [], False
+                    if run.quick and quickread.route(run.task) == "read":
+                        res = await self.try_quick_read(run)
+                        if res is not None and res.status == "done":
+                            quick_done = True
+                        elif res is not None:
+                            task_text, quick_items = run.task + "\n\n" + res.notes, res.items
+                            run.items = quick_items
+                    run.path = "quick" if quick_done else ("quick+agent" if task_text != run.task else "agent")
+                    if quick_done:
+                        self.new_conversation()  # a follow-up after a quick read starts a fresh agent
+                        agent = None
+                    else:
+                        hint = await core.visible_tab_hint(self.browser)
+                        agent = core.make_agent(task_text + ("\n\n" + hint if hint else ""), run.model,
+                                                run.fallback, self.browser, self.ask, on_step=self.on_step,
+                                                flash_mode=run.fast, turbo_mode=run.turbo)
+                        agent.saved_items.extend(quick_items)
+                        self.convo, self.convo_model, self.convo_fast, self.convo_turns = agent, run.model, run.fast, 0
+                if run.kind == "task" and run.path == "quick":
+                    pass  # finished by the quick read; result and files are already written
+                elif run.kind == "task":
+                    if run.path is None:
+                        run.path = "agent"
                     self.agent = agent
                     run.items = agent.saved_items  # same list: the dashboard shows items as they're saved
                     history = await agent.run(max_steps=MAX_STEPS)
@@ -455,7 +502,7 @@ async def run_task(request: Request):
     if not core.api_key():
         return JSONResponse({"error": "save your b.ai API key first"}, status_code=400)
     run = Run(task, model, fallback, follow_up=bool(body.get("follow_up")), fast=bool(body.get("fast", False)),
-              turbo=bool(body.get("turbo", True)), optimized=bool(body.get("optimized", False)))
+              turbo=bool(body.get("turbo", True)), optimized=bool(body.get("optimized", False)), quick=bool(body.get("quick", True)))
     studio.runs.append(run)
     await studio.queue.put(run)
     return JSONResponse({"id": run.id})

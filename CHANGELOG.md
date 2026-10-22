@@ -2,6 +2,47 @@
 
 Newest first. Every change gets an entry, in the same commit (see [AGENTS.md](AGENTS.md)).
 
+## 2026-10-22 · Claude Code · Speed: quick-read fast path (router + parallel page reads), hedged model requests
+
+- **Router + quick read (`quickread.py`).** `route(task)` is a decision layer with no model call. A task that names
+  a URL and asks only to read (look up, list, collect, "for each X open its page") goes to a quick read first:
+  - Python opens the pages in background tabs of its own, takes all their text (scrolling virtualised lists
+    itself), links and GET forms;
+  - the model answers in JSON: done (answer + items), open (pages to read next, opened 4 at a time), or agent;
+  - only new pages go into each round, so prompts stay small.
+  It never clicks or types, so the gate is never needed. Items are checked against the pages read, and a name
+  not on any page is dropped. Anything needing clicks, logins or the human's tabs goes to the agent as before.
+  A handed-over task gets notes on what was read, and the agent starts with the items already saved.
+  LinkedIn is read one page at a time with a pause, at most 5 pages a round (site rules in AGENTS.md).
+- **Hedged requests (`core.HedgedChatOpenAI`).** If a model call hasn't answered after `hedge_after` seconds
+  (12 by default, per model in `models.json`), the same request goes out again and the first answer wins.
+  `LLM_HEDGE=0` turns it off.
+- Wiring: dashboard "Quick read" box (on by default), History shows the path; `agent.py --no-quick`;
+  `bench/run.py --quick`. `LLM_PROVIDER=openrouter` runs the same models through OpenRouter (`openrouter` ids in
+  `models.json`). `core.start_url` now also takes explicit URLs on any host (`http://127.0.0.1:…`).
+- Evidence. b.ai and paid OpenRouter models weren't available in this container (no b.ai key, OpenRouter key
+  without credit), so everything ran on one free model, MiniMax M3.1 Flash. It is slower than the b.ai flash
+  models, and there is one run per cell:
+
+| Task | Agent (`--tag agent`) | Quick read (`--tag quick2`) |
+|---|---|---|
+| lookup | 1/1, 2 steps, 10.0 s | 1/1, 4.5 s |
+| companies (8 detail pages) | 8/8, 13 steps, 120 s | 8/8, 35.8 s (12.0 s on an earlier run) |
+| catalog (virtualised list) | **7/21**, 4 steps, 27.6 s | **21/21**, 14.1 s |
+| people (paged search, bad filter) | 10/10, 30 steps, 584 s (agent after a failed quick read) | 10/10, 213.5 s |
+
+  - Hedging: a simulation with the real class and a fake provider. It hangs 1 call in 7 until the 60 s timeout
+    (the Oct 6 b.ai measurement); the other calls take 2–12 s. Mean per call 14.5 s → 5.9 s, p90 62.8 s → 14.6 s,
+    at a cost of 14% extra requests. A simulation, not a b.ai measurement.
+  - Tests: `python tests/test_offline.py` all pass. New tests: `test_route_sends_only_read_tasks_to_quick_read`,
+    `test_hedged_request_beats_a_hung_call` and `test_quick_read_reads_all_rows_and_opens_detail_pages_in_parallel`.
+- **For the other agent / owner:**
+  - Please run `python bench/run.py --model qwen3.8-flash --tag agent` and `… --quick --tag quick` on b.ai and add
+    the lines here. That is the real before/after.
+  - Then check b.ai's hang rate with hedging on vs `LLM_HEDGE=0`.
+  - Known limit: background tabs get no rendering frames. Feeds that load on IntersectionObserver may not grow
+    in a quick read; those tasks will hand over to the agent. Stop doesn't interrupt a quick read mid-round.
+
 ## 2026-10-08 · Muse Spark · Policy E: tab hygiene keeps page states small
 
 - `core.POLICY`: after `save_item` on a detail/profile page, go back to list (or close tab) before next item; keep page only when follow-up needs it. Targets run 1791437835's 2.6k->17k token bloat (median 9k). Follow-up-continuation tasks exempt by wording.

@@ -1,6 +1,7 @@
 """Benchmark: fixed tasks on the local test site, scored against answer keys.
 
-    python bench/run.py --model qwen3.8-flash [--fast] [--no-save-item] [--tasks people,catalog] [--repeat 2]
+    python bench/run.py --model qwen3.8-flash [--fast] [--quick] [--no-save-item] [--tasks people,catalog] [--repeat 2]
+    LLM_PROVIDER=openrouter python bench/run.py …   (same models through OpenRouter; key in OPENROUTER_API_KEY)
 
 Runs each task in a fresh headless Chromium against bench/testsite.py, then scores what the agent returned (its
 saved items and its final answer) against the right answers. Results go to bench/results/ (git-ignored):
@@ -150,8 +151,9 @@ async def human(kind, text):
             "confirm": "no", "handover": ""}.get(kind, "")
 
 
-async def run_one(name, spec, model, fallback, fast, save_item, max_steps, tag):
+async def run_one(name, spec, model, fallback, fast, save_item, max_steps, tag, quick=False):
     import core
+    import quickread
     from browser_use import Browser
     chrome = os.environ.get("CHROME_PATH") or next(
         (str(p) for p in sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))), None)
@@ -164,14 +166,26 @@ async def run_one(name, spec, model, fallback, fast, save_item, max_steps, tag):
         print("  (this version has no save_item tool; running without it)")
     t0 = time.time()
     status, final, items, steps, history, fell_back = "ok", "", [], 0, None, False
+    path, quick_rounds, quick_note = "agent", 0, ""
     try:
-        agent = core.make_agent(spec["task"], model, fallback, browser, human, **kwargs)
-        history = await agent.run(max_steps=max_steps)
-        final = history.final_result() or ""
-        steps = len(history.history)
-        items = list(getattr(agent, "saved_items", []) or [])
-        status = "done" if history.is_done() else "not finished"
-        fell_back = bool(getattr(agent, "is_using_fallback_llm", False))  # the model changed mid-run
+        task = spec["task"]
+        if quick and quickread.route(task) == "read":
+            await browser.start()
+            res = await quickread.quick_read(task, model, browser, fallback_id=fallback)
+            path, quick_rounds, items, quick_note = "quick", res.rounds, res.items, res.notes[-300:]
+            if res.status == "done":
+                final, status = res.answer, "done"
+            else:
+                path, task = "quick+agent", task + "\n\n" + res.notes
+        if path != "quick":
+            agent = core.make_agent(task, model, fallback, browser, human, **kwargs)
+            agent.saved_items.extend(items)
+            history = await agent.run(max_steps=max_steps)
+            final = history.final_result() or ""
+            steps = len(history.history)
+            items = list(getattr(agent, "saved_items", []) or [])
+            status = "done" if history.is_done() else "not finished"
+            fell_back = bool(getattr(agent, "is_using_fallback_llm", False))  # the model changed mid-run
     except Exception as e:  # noqa: BLE001  a crash is a result too
         status = f"crashed: {type(e).__name__}: {str(e)[:120]}"
     finally:
@@ -181,6 +195,7 @@ async def run_one(name, spec, model, fallback, fast, save_item, max_steps, tag):
             pass
     secs = round(time.time() - t0, 1)
     row = {"tag": tag, "task": name, "model": model, "fast": fast, "save_item": save_item, "status": status,
+           "path": path, "quick_rounds": quick_rounds, "quick_note": quick_note,
            "fell_back": fell_back, "steps": steps, "seconds": secs, "items_saved": len(items), **score(spec, final, items),
            "when": datetime.now().isoformat(timespec="seconds")}
     RESULTS.mkdir(exist_ok=True)
@@ -227,6 +242,7 @@ async def main():
     ap.add_argument("--fallback", default="deepseek-v4.1-flash")
     ap.add_argument("--fast", action="store_true", help="Browser Use flash mode (short prompt, no thinking)")
     ap.add_argument("--no-save-item", action="store_true")
+    ap.add_argument("--quick", action="store_true", help="try a quick read (quickread.py) before the agent")
     ap.add_argument("--tasks", default="people,catalog,companies,lookup")
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--max-steps", type=int, default=40)
@@ -241,9 +257,9 @@ async def main():
     for _ in range(args.repeat):
         for name in args.tasks.split(","):
             row = await run_one(name, specs[name], args.model, args.fallback, args.fast, not args.no_save_item,
-                                args.max_steps, tag)
+                                args.max_steps, tag, args.quick)
             print(f"{tag:<34} {name:<10} {row['status'][:30]:<30} right {row['right']}/{row['of']}  wrong {row['wrong']}  "
-                  f"invented {row['invented']}  steps {row['steps']}  {row['seconds']}s", flush=True)
+                  f"invented {row['invented']}  steps {row['steps']}  {row['seconds']}s  {row['path']}", flush=True)
 
 
 if __name__ == "__main__":

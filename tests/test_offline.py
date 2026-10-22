@@ -258,6 +258,134 @@ def test_extract_target_url_no_crash_and_respects_local_context():
     assert turbo.extract_target_url("Summarise this page about github") is None
 
 
+# ---------------------------------------------------------------- quick read (read-only fast path)
+
+def test_route_sends_only_read_tasks_to_quick_read():
+    import quickread
+    assert quickread.route("Open https://x.com/catalog and list every product under $20") == "read"
+    assert quickread.route("Sign up on example.com and pick a plan") == "agent"           # changes something
+    assert quickread.route("Find 10 recruiters") == "agent"                               # no page to start from
+    assert quickread.route("Summarise this page") == "agent"                              # the human's own tab
+    assert quickread.route("Open https://x.com/a and send a message to Bob") == "agent"
+    # a local test site has no .com: explicit URLs of any host still count as a start page
+    assert core.start_url("Open http://127.0.0.1:5000/people . Search") == "http://127.0.0.1:5000/people"
+
+
+def test_hedged_request_beats_a_hung_call():
+    import asyncio
+    import time
+    import browser_use
+
+    async def scenario(hedge_after, behaviours):
+        calls = []
+
+        async def fake(self, messages, output_format=None, **kwargs):
+            calls.append(1)
+            return await behaviours[len(calls) - 1]()   # one behaviour per call, in the order they start
+
+        real, browser_use.ChatOpenAI.ainvoke = browser_use.ChatOpenAI.ainvoke, fake
+        try:
+            llm = core.HedgedChatOpenAI(hedge_after=hedge_after, model="m", api_key="x")
+            t0 = time.time()
+            try:
+                out = await llm.ainvoke([])
+            except Exception as e:  # noqa: BLE001
+                out = e
+            took = time.time() - t0
+            await asyncio.sleep(0)  # let a cancelled call finish unwinding
+            leftover = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+            return out, took, getattr(llm, "hedges", 0), len(calls), leftover
+        finally:
+            browser_use.ChatOpenAI.ainvoke = real
+
+    async def hang():
+        await asyncio.sleep(30)
+
+    async def fast():
+        return "fast"
+
+    async def slow_then_fail():
+        await asyncio.sleep(0.4)  # still running when the hedge goes out
+        raise RuntimeError("first failed")
+
+    async def fail():
+        raise ValueError("second failed")
+
+    out, took, hedges, n, leftover = asyncio.run(scenario(0.2, [hang, fast]))   # a: the hung call loses
+    assert out == "fast" and took < 2 and hedges == 1 and n == 2 and not leftover
+    out, _, hedges, n, leftover = asyncio.run(scenario(None, [fast, fast]))     # b: no hedging, one plain call
+    assert out == "fast" and hedges == 0 and n == 1 and not leftover
+    out, _, hedges, n, leftover = asyncio.run(scenario(0.2, [slow_then_fail, fail]))  # c: both fail
+    assert isinstance(out, (RuntimeError, ValueError)) and hedges == 1 and n == 2 and not leftover
+
+
+def _chromium():
+    from pathlib import Path
+    return os.environ.get("CHROME_PATH") or next(
+        (str(p) for p in sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))), None)
+
+
+def test_quick_read_reads_all_rows_and_opens_detail_pages_in_parallel():
+    import asyncio
+    import re
+    chrome = _chromium()
+    if not chrome:
+        print("skip  (no chromium in /opt/pw-browsers and no CHROME_PATH) ", end="")
+        return
+    sys.path.insert(0, str(ROOT / "bench"))
+    import quickread
+    import run as bench
+    import testsite
+    from browser_use import Browser
+    base = bench.start_site()
+
+    class FakeLLM:
+        """Round 1 opens every company page the model was shown; round 2 reports them, plus one invented name."""
+        def __init__(self):
+            self.rounds = 0
+
+        async def ainvoke(self, messages, output_format=None):
+            self.rounds += 1
+            if self.rounds == 1:
+                urls = re.findall(r"-> (http\S*/companies/[a-z0-9-]+)", messages[-1].text)
+                return type("R", (), {"completion": quickread.Reply(status="open", open=urls)})()
+            items = [quickread.Item(name=c, details=[quickread.Field(field="founded", value=str(y)),
+                                                      quickread.Field(field="hq", value=city)])
+                     for c, y, city in testsite.COMPANIES]
+            items.append(quickread.Item(name="Nonexistent Corp", details=[quickread.Field(field="hq", value="Atlantis")]))
+            return type("R", (), {"completion": quickread.Reply(status="done", answer="ok", items=items)})()
+
+    async def go():
+        browser = Browser(executable_path=chrome, headless=True, user_data_dir=tempfile.mkdtemp(prefix="qr-"),
+                          chromium_sandbox=False, keep_alive=False)
+        real_make_llm = core.make_llm
+        try:
+            await browser.start()
+            page = await quickread.read_page(browser, base + "/catalog")
+            missing = [p["name"] for p in testsite.PRODUCTS if p["name"] not in page["text"]]
+            assert not missing, f"virtualised rows not read: {missing[:5]} ({len(missing)} of {len(testsite.PRODUCTS)})"
+            llm = FakeLLM()
+            core.make_llm = lambda model_id: llm
+            return await quickread.quick_read(
+                "Open " + base + "/companies. For each company listed, open its page and note the year it was "
+                "founded and its headquarters city.", "qwen3.8-flash", browser)
+        finally:
+            core.make_llm = real_make_llm
+            try:
+                await browser.kill()
+            except Exception:  # noqa: BLE001
+                pass
+
+    res = asyncio.run(go())
+    assert res.status == "done" and res.rounds == 2, (res.status, res.rounds, res.notes)
+    assert res.pages >= 1 + len(testsite.COMPANIES), res.pages            # the list page + every detail page
+    assert len(res.items) == len(testsite.COMPANIES)                      # "Nonexistent Corp" isn't on any page: dropped
+    assert all(i["unverified"] == [] for i in res.items), [i for i in res.items if i["unverified"]]
+    by_name = {i["fields"]["name"]: i["fields"] for i in res.items}
+    for c, y, city in testsite.COMPANIES:
+        assert by_name[c] == {"name": c, "founded": str(y), "hq": city}, by_name.get(c)
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):
